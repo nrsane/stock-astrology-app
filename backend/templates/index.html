@@ -4,48 +4,153 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Astrology Analysis</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; text-align: center; }
-        .card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #555; }
-        input, select, button { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; }
-        button { background: #667eea; color: white; border: none; cursor: pointer; transition: background 0.3s; }
-        button:hover { background: #5a6fd8; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        .result { background: #f8f9fa; border-left: 4px solid #667eea; padding: 1rem; margin-top: 1rem; }
-        .error { background: #fee; border-left-color: #e74c3c; color: #c0392b; }
-        .success { background: #efc; border-left-color: #27ae60; color: #229954; }
-        .loading { text-align: center; padding: 2rem; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .stock-list { max-height: 400px; overflow-y: auto; }
-        .stock-item { padding: 0.75rem; border-bottom: 1px solid #eee; cursor: pointer; }
-        .stock-item:hover { background: #f8f9fa; }
-        .stock-item:last-child { border-bottom: none; }
-        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+        .header { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 2rem; 
+            border-radius: 15px; 
+            margin-bottom: 2rem; 
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .card { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 15px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
+            margin-bottom: 2rem;
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 2rem; 
+        }
+        .form-group { margin-bottom: 1.5rem; }
+        label { 
+            display: block; 
+            margin-bottom: 0.5rem; 
+            font-weight: 600; 
+            color: #555; 
+        }
+        input, button { 
+            width: 100%; 
+            padding: 1rem; 
+            border: 2px solid #e1e5e9; 
+            border-radius: 8px; 
+            font-size: 1rem; 
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .result { 
+            background: #f8f9fa; 
+            border-left: 4px solid #667eea; 
+            padding: 1.5rem; 
+            margin-top: 1.5rem;
+            border-radius: 8px;
+        }
+        .success { 
+            background: #d4edda; 
+            border-left-color: #28a745; 
+            color: #155724; 
+        }
+        .error { 
+            background: #f8d7da; 
+            border-left-color: #dc3545; 
+            color: #721c24; 
+        }
+        .stock-list { 
+            max-height: 500px; 
+            overflow-y: auto; 
+        }
+        .stock-item { 
+            padding: 1rem; 
+            border-bottom: 1px solid #eee; 
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border-radius: 8px;
+        }
+        .stock-item:hover { 
+            background: #f8f9fa; 
+            transform: translateX(5px);
+        }
+        .loading { 
+            text-align: center; 
+            padding: 2rem; 
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) { 
+            .grid { grid-template-columns: 1fr; } 
+            body { padding: 10px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📈 Stock Astrology Analysis</h1>
-            <p>KP Astrology-based Stock Price Prediction</p>
+            <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">📈 Stock Astrology Analysis</h1>
+            <p style="font-size: 1.2rem; color: #666;">Basic Version - Successfully Deployed! 🚀</p>
         </div>
 
         <div class="grid">
             <!-- Add Stock Form -->
             <div class="card">
-                <h2>Add New Stock</h2>
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Add New Stock</h2>
                 <form id="stockForm">
                     <div class="form-group">
-                        <label for="symbol">Stock Symbol (e.g., RELIANCE, TCS):</label>
-                        <input type="text" id="symbol" required placeholder="Enter NSE symbol...">
+                        <label for="symbol">Stock Symbol:</label>
+                        <input type="text" id="symbol" required placeholder="e.g., RELIANCE, TCS, INFY">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="name">Company Name (optional):</label>
+                        <input type="text" id="name" placeholder="e.g., Reliance Industries Limited">
                     </div>
                     
                     <div class="form-group">
@@ -58,7 +163,7 @@
                         <input type="time" id="listingTime" value="10:00">
                     </div>
                     
-                    <button type="submit" id="submitBtn">Add Stock & Generate Chart</button>
+                    <button type="submit" id="submitBtn">Add Stock to Database</button>
                 </form>
                 
                 <div id="formResult" class="result" style="display: none;"></div>
@@ -66,52 +171,79 @@
 
             <!-- Stock List -->
             <div class="card">
-                <h2>Existing Stocks</h2>
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Existing Stocks</h2>
                 <div class="stock-list" id="stockList">
                     <div class="loading" id="stocksLoading">
                         <div class="spinner"></div>
-                        <p>Loading stocks...</p>
+                        <p>Loading stocks from database...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Stock Details -->
-        <div class="card" id="stockDetails" style="display: none;">
-            <h2 id="detailsTitle">Stock Details</h2>
-            <div id="detailsContent"></div>
+        <!-- API Status -->
+        <div class="card">
+            <h2 style="margin-bottom: 1rem; color: #333;">System Status</h2>
+            <div id="systemStatus">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Checking system status...</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // DOM Elements
-        const stockForm = document.getElementById('stockForm');
-        const formResult = document.getElementById('formResult');
-        const stockList = document.getElementById('stockList');
-        const stocksLoading = document.getElementById('stocksLoading');
-        const stockDetails = document.getElementById('stockDetails');
-        const detailsTitle = document.getElementById('detailsTitle');
-        const detailsContent = document.getElementById('detailsContent');
-
-        // API Base URL - will be same domain when deployed
+        // API Base URL
         const API_BASE = '';
 
-        // Load stocks on page load
-        document.addEventListener('DOMContentLoaded', loadStocks);
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+            loadStocks();
+        });
+
+        // System status check
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.innerHTML = `
+                    <div class="result success">
+                        <h3>✅ System Operational</h3>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><strong>Database:</strong> ${data.database}</p>
+                        <p><strong>Last Check:</strong> ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+            } catch (error) {
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ System Issue</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Last Check:</strong> ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+            }
+        }
 
         // Form submission
-        stockForm.addEventListener('submit', async (e) => {
+        document.getElementById('stockForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
             
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing...';
-            formResult.style.display = 'none';
+            submitBtn.textContent = 'Adding Stock...';
             
             const formData = {
                 symbol: document.getElementById('symbol').value,
+                name: document.getElementById('name').value,
                 listing_date: document.getElementById('listingDate').value,
                 listing_time: document.getElementById('listingTime').value
             };
@@ -127,24 +259,29 @@
                 
                 const data = await response.json();
                 
-                formResult.style.display = 'block';
-                formResult.className = 'result ' + (data.success ? 'success' : 'error');
-                formResult.innerHTML = data.success ? 
-                    `<h3>✅ ${data.message}</h3>
-                     <p><strong>Stock ID:</strong> ${data.stock_id}</p>
-                     <p><strong>2nd House Significators:</strong> ${data.significators.second_house.all_significators.join(', ')}</p>
-                     <p><strong>11th House Significators:</strong> ${data.significators.eleventh_house.all_significators.join(', ')}</p>` :
-                    `<h3>❌ Error</h3><p>${data.error}</p>`;
+                const resultDiv = document.getElementById('formResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result ' + (data.success ? 'success' : 'error');
                 
                 if (data.success) {
-                    stockForm.reset();
-                    loadStocks();
+                    resultDiv.innerHTML = `
+                        <h3>✅ ${data.message}</h3>
+                        <p><strong>Symbol:</strong> ${data.stock.symbol}</p>
+                        <p><strong>Name:</strong> ${data.stock.name}</p>
+                        <p><strong>Listing Date:</strong> ${data.stock.listing_date}</p>
+                        <p><strong>Added:</strong> ${new Date(data.stock.created_at).toLocaleString()}</p>
+                    `;
+                    document.getElementById('stockForm').reset();
+                    loadStocks(); // Refresh the stock list
+                } else {
+                    resultDiv.innerHTML = `<h3>❌ Error</h3><p>${data.error}</p>`;
                 }
                 
             } catch (error) {
-                formResult.style.display = 'block';
-                formResult.className = 'result error';
-                formResult.innerHTML = `<h3>❌ Network Error</h3><p>${error.message}</p>`;
+                const resultDiv = document.getElementById('formResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<h3>❌ Network Error</h3><p>${error.message}</p>`;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
@@ -154,93 +291,64 @@
         // Load all stocks
         async function loadStocks() {
             try {
-                stocksLoading.style.display = 'block';
-                stockList.innerHTML = '';
+                const stockList = document.getElementById('stockList');
+                stockList.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading stocks...</p>
+                    </div>
+                `;
                 
                 const response = await fetch(`${API_BASE}/api/stocks`);
                 const data = await response.json();
                 
-                stocksLoading.style.display = 'none';
-                
                 if (data.success && data.stocks.length > 0) {
                     stockList.innerHTML = data.stocks.map(stock => `
-                        <div class="stock-item" onclick="loadStockDetails('${stock.symbol}')">
-                            <strong>${stock.symbol}</strong>
-                            <br><small>Listed: ${stock.listing_date} at ${stock.listing_time}</small>
+                        <div class="stock-item" onclick="viewStockDetails('${stock.symbol}')">
+                            <strong style="font-size: 1.1rem;">${stock.symbol}</strong>
+                            <div style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+                                <div>${stock.name}</div>
+                                <div>Listed: ${stock.listing_date} at ${stock.listing_time}</div>
+                                <div>Added: ${new Date(stock.created_at).toLocaleDateString()}</div>
+                            </div>
                         </div>
                     `).join('');
                 } else {
-                    stockList.innerHTML = '<p>No stocks found. Add your first stock above!</p>';
+                    stockList.innerHTML = `
+                        <div class="result">
+                            <p>No stocks found in database.</p>
+                            <p>Add your first stock using the form on the left!</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                stocksLoading.style.display = 'none';
-                stockList.innerHTML = `<p class="error">Error loading stocks: ${error.message}</p>`;
+                const stockList = document.getElementById('stockList');
+                stockList.innerHTML = `
+                    <div class="result error">
+                        <p>Error loading stocks: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
-        // Load stock details
-        async function loadStockDetails(symbol) {
+        // View stock details
+        async function viewStockDetails(symbol) {
             try {
-                stockDetails.style.display = 'block';
-                detailsContent.innerHTML = '<p>Loading...</p>';
-                
                 const response = await fetch(`${API_BASE}/api/stocks/${symbol}`);
                 const data = await response.json();
                 
                 if (data.success) {
-                    detailsTitle.textContent = `${symbol} - Detailed Analysis`;
-                    
-                    let content = `
-                        <div class="grid">
-                            <div>
-                                <h3>Basic Info</h3>
-                                <p><strong>Listing:</strong> ${data.stock.listing_date} at ${data.stock.listing_time}</p>
-                                <p><strong>Added:</strong> ${new Date(data.stock.created_at).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <h3>Birth Chart</h3>
-                                <p><strong>Ascendant:</strong> ${data.birth_chart.ascendant_degree.toFixed(2)}°</p>
-                                <p><strong>Planets:</strong> ${Object.keys(data.birth_chart.planet_positions).length}</p>
-                            </div>
-                        </div>
-                        
-                        <h3>House Significators</h3>
-                    `;
-                    
-                    data.house_significators.forEach(sig => {
-                        content += `
-                            <div class="result" style="margin: 10px 0;">
-                                <h4>${sig.house_number}${getOrdinal(sig.house_number)} House</h4>
-                                <p><strong>Sign Lord:</strong> ${sig.cuspal_sign_lord}</p>
-                                <p><strong>Star Lord:</strong> ${sig.cuspal_star_lord}</p>
-                                <p><strong>Sub Lord:</strong> ${sig.cuspal_sub_lord}</p>
-                                <p><strong>Occupants:</strong> ${sig.occupying_planets.join(', ') || 'None'}</p>
-                                <p><strong>All Significators:</strong> ${sig.all_significators.join(', ')}</p>
-                            </div>
-                        `;
-                    });
-                    
-                    detailsContent.innerHTML = content;
+                    alert(`Stock Details:\n\nSymbol: ${data.stock.symbol}\nName: ${data.stock.name}\nListing Date: ${data.stock.listing_date}\nListing Time: ${data.stock.listing_time}`);
                 } else {
-                    detailsContent.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                    alert('Error: ' + data.error);
                 }
             } catch (error) {
-                detailsContent.innerHTML = `<p class="error">Error loading details: ${error.message}</p>`;
+                alert('Error loading stock details: ' + error.message);
             }
         }
 
-        // Helper function for ordinal numbers
-        function getOrdinal(n) {
-            const s = ["th", "st", "nd", "rd"];
-            const v = n % 100;
-            return s[(v - 20) % 10] || s[v] || s[0];
-        }
-
-        // Health check on load
-        fetch(`${API_BASE}/api/health`)
-            .then(response => response.json())
-            .then(data => console.log('API Health:', data))
-            .catch(error => console.error('Health check failed:', error));
+        // Auto-set today's date as default
+        document.getElementById('listingDate').valueAsDate = new Date();
     </script>
 </body>
 </html>
