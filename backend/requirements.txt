@@ -1,13 +1,23 @@
-flask==2.3.3
-flask-sqlalchemy==3.0.5
-flask-cors==4.0.0
-gunicorn==21.2.0
-python-dotenv==1.0.0
+# Core Flask
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Database
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.23
 psycopg2-binary==2.9.7
+
+# CORS and deployment
+Flask-CORS==4.0.0
+gunicorn==21.2.0
+
+# Data processing (lightweight versions)
 pandas==2.0.3
 numpy==1.24.3
-py-swisseph==2.10.3.1
+
+# Utilities
+python-dotenv==1.0.0
 requests==2.31.0
-yfinance==0.2.18
-plotly==5.15.0
-scipy==1.11.1
+
+# Swiss Ephemeris (will add later after basic deployment works)
+# py-swisseph==2.10.3.1
