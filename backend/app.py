@@ -625,3 +625,93 @@ def predict_stock_movement(symbol):
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/stocks', methods=['GET'])
+def get_stocks():
+    try:
+        stocks = Stock.query.all()
+        return jsonify({
+            'success': True,
+            'stocks': [stock.to_dict() for stock in stocks],
+            'count': len(stocks)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/stocks', methods=['POST'])
+def add_stock():
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('symbol'):
+            return jsonify({'success': False, 'error': 'Stock symbol is required'}), 400
+        
+        symbol = data['symbol'].upper().strip()
+        listing_date = data.get('listing_date', '2000-01-01')
+        listing_time = data.get('listing_time', '10:00')
+        
+        # Check if stock already exists
+        existing_stock = Stock.query.filter_by(symbol=symbol).first()
+        if existing_stock:
+            return jsonify({
+                'success': False, 
+                'error': f'Stock {symbol} already exists'
+            }), 400
+        
+        # Create new stock
+        new_stock = Stock(
+            symbol=symbol,
+            name=data.get('name', f'{symbol} Company'),
+            listing_date=listing_date,
+            listing_time=listing_time
+        )
+        
+        db.session.add(new_stock)
+        db.session.flush()  # Get the ID without committing
+        
+        # Create basic birth chart
+        birth_chart = BirthChart(
+            stock_id=new_stock.id,
+            ascendant_degree=0.0,
+            planet_positions={
+                "status": "KP calculations coming soon",
+                "planets": ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+            }
+        )
+        db.session.add(birth_chart)
+        
+        # Create house significators for 2nd and 11th houses
+        for house_num in [2, 11]:
+            house_name = "Wealth" if house_num == 2 else "Gains"
+            significator = HouseSignificator(
+                stock_id=new_stock.id,
+                house_number=house_num,
+                cuspal_sign_lord="Mars",
+                cuspal_star_lord="Venus", 
+                cuspal_sub_lord="Mercury",
+                all_significators=["Mars", "Venus", "Mercury", "Jupiter"]
+            )
+            db.session.add(significator)
+        
+        db.session.commit()
+        
+        # AUTO-FETCH STOCK PRICES AFTER ADDING STOCK
+        try:
+            hist_data = stock_data_manager.fetch_stock_data(symbol, period="1y")
+            if hist_data is not None:
+                stock_data_manager.store_stock_prices(new_stock.id, hist_data)
+                price_message = f" + {len(hist_data)} price records fetched"
+            else:
+                price_message = " (price fetch failed)"
+        except Exception as e:
+            print(f"Price fetch error: {e}")
+            price_message = " (price fetch error)"
+        
+        return jsonify({
+            'success': True,
+            'message': f'Stock {symbol} added successfully with KP chart!' + price_message,
+            'stock': new_stock.to_dict(),
+            'kp_status': 'Basic KP chart created'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
