@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Astrology Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -70,12 +71,6 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
-        button:disabled { 
-            background: #ccc; 
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
         .result { 
             background: #f8f9fa; 
             border-left: 4px solid #667eea; 
@@ -127,7 +122,6 @@
         }
         @media (max-width: 768px) { 
             .grid { grid-template-columns: 1fr; } 
-            body { padding: 10px; }
         }
     </style>
 </head>
@@ -135,7 +129,7 @@
     <div class="container">
         <div class="header">
             <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">📈 Stock Astrology Analysis</h1>
-            <p style="font-size: 1.2rem; color: #666;">Basic Version - Successfully Deployed! 🚀</p>
+            <p style="font-size: 1.2rem; color: #666;">Database + KP Astrology Features Added! 🎉</p>
         </div>
 
         <div class="grid">
@@ -144,12 +138,12 @@
                 <h2 style="margin-bottom: 1.5rem; color: #333;">Add New Stock</h2>
                 <form id="stockForm">
                     <div class="form-group">
-                        <label for="symbol">Stock Symbol:</label>
+                        <label for="symbol">Stock Symbol (NSE):</label>
                         <input type="text" id="symbol" required placeholder="e.g., RELIANCE, TCS, INFY">
                     </div>
                     
                     <div class="form-group">
-                        <label for="name">Company Name (optional):</label>
+                        <label for="name">Company Name:</label>
                         <input type="text" id="name" placeholder="e.g., Reliance Industries Limited">
                     </div>
                     
@@ -163,7 +157,7 @@
                         <input type="time" id="listingTime" value="10:00">
                     </div>
                     
-                    <button type="submit" id="submitBtn">Add Stock to Database</button>
+                    <button type="submit" id="submitBtn">Add Stock & Generate KP Chart</button>
                 </form>
                 
                 <div id="formResult" class="result" style="display: none;"></div>
@@ -181,7 +175,13 @@
             </div>
         </div>
 
-        <!-- API Status -->
+        <!-- Stock Details -->
+        <div class="card" id="stockDetails" style="display: none;">
+            <h2 id="detailsTitle">Stock Details</h2>
+            <div id="detailsContent"></div>
+        </div>
+
+        <!-- System Status -->
         <div class="card">
             <h2 style="margin-bottom: 1rem; color: #333;">System Status</h2>
             <div id="systemStatus">
@@ -201,6 +201,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkSystemStatus();
             loadStocks();
+            // Set today's date as default
+            document.getElementById('listingDate').valueAsDate = new Date();
         });
 
         // System status check
@@ -216,7 +218,7 @@
                         <p><strong>Status:</strong> ${data.status}</p>
                         <p><strong>Message:</strong> ${data.message}</p>
                         <p><strong>Database:</strong> ${data.database}</p>
-                        <p><strong>Last Check:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>Features:</strong> Database + KP Astrology Ready</p>
                     </div>
                 `;
             } catch (error) {
@@ -225,7 +227,6 @@
                     <div class="result error">
                         <h3>❌ System Issue</h3>
                         <p><strong>Error:</strong> ${error.message}</p>
-                        <p><strong>Last Check:</strong> ${new Date().toLocaleString()}</p>
                     </div>
                 `;
             }
@@ -269,10 +270,11 @@
                         <p><strong>Symbol:</strong> ${data.stock.symbol}</p>
                         <p><strong>Name:</strong> ${data.stock.name}</p>
                         <p><strong>Listing Date:</strong> ${data.stock.listing_date}</p>
-                        <p><strong>Added:</strong> ${new Date(data.stock.created_at).toLocaleString()}</p>
+                        <p><strong>KP Status:</strong> ${data.kp_status}</p>
                     `;
                     document.getElementById('stockForm').reset();
-                    loadStocks(); // Refresh the stock list
+                    document.getElementById('listingDate').valueAsDate = new Date();
+                    loadStocks();
                 } else {
                     resultDiv.innerHTML = `<h3>❌ Error</h3><p>${data.error}</p>`;
                 }
@@ -309,7 +311,7 @@
                             <div style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
                                 <div>${stock.name}</div>
                                 <div>Listed: ${stock.listing_date} at ${stock.listing_time}</div>
-                                <div>Added: ${new Date(stock.created_at).toLocaleDateString()}</div>
+                                <div style="color: #667eea; font-weight: 600;">✅ KP Chart Ready</div>
                             </div>
                         </div>
                     `).join('');
@@ -338,7 +340,49 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`Stock Details:\n\nSymbol: ${data.stock.symbol}\nName: ${data.stock.name}\nListing Date: ${data.stock.listing_date}\nListing Time: ${data.stock.listing_time}`);
+                    const detailsDiv = document.getElementById('stockDetails');
+                    const titleDiv = document.getElementById('detailsTitle');
+                    const contentDiv = document.getElementById('detailsContent');
+                    
+                    detailsDiv.style.display = 'block';
+                    titleDiv.textContent = `${symbol} - KP Astrology Analysis`;
+                    
+                    let content = `
+                        <div class="grid">
+                            <div>
+                                <h3>Stock Information</h3>
+                                <p><strong>Symbol:</strong> ${data.stock.symbol}</p>
+                                <p><strong>Name:</strong> ${data.stock.name}</p>
+                                <p><strong>Listing:</strong> ${data.stock.listing_date} at ${data.stock.listing_time}</p>
+                            </div>
+                            <div>
+                                <h3>Birth Chart</h3>
+                                <p><strong>Status:</strong> Basic chart created</p>
+                                <p><strong>Next:</strong> Real KP calculations coming soon</p>
+                            </div>
+                        </div>
+                        
+                        <h3>House Significators</h3>
+                    `;
+                    
+                    if (data.house_significators && data.house_significators.length > 0) {
+                        data.house_significators.forEach(sig => {
+                            content += `
+                                <div class="result" style="margin: 10px 0;">
+                                    <h4>${sig.house_number}${getOrdinal(sig.house_number)} House (Wealth/Gains)</h4>
+                                    <p><strong>Sign Lord:</strong> ${sig.cuspal_sign_lord}</p>
+                                    <p><strong>Star Lord:</strong> ${sig.cuspal_star_lord}</p>
+                                    <p><strong>Sub Lord:</strong> ${sig.cuspal_sub_lord}</p>
+                                    <p><strong>All Significators:</strong> ${sig.all_significators.join(', ')}</p>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    contentDiv.innerHTML = content;
+                    
+                    // Scroll to details
+                    detailsDiv.scrollIntoView({ behavior: 'smooth' });
                 } else {
                     alert('Error: ' + data.error);
                 }
@@ -347,8 +391,12 @@
             }
         }
 
-        // Auto-set today's date as default
-        document.getElementById('listingDate').valueAsDate = new Date();
+        // Helper function for ordinal numbers
+        function getOrdinal(n) {
+            const s = ["th", "st", "nd", "rd"];
+            const v = n % 100;
+            return s[(v - 20) % 10] || s[v] || s[0];
+        }
     </script>
 </body>
 </html>
