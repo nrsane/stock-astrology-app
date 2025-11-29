@@ -26,6 +26,9 @@ scipy==1.10.1
 # Plotting
 plotly==5.15.0
 
+Flask==2.3.3
+gunicorn==21.2.0
+
 # Setuptools and pip (stable versions)
 setuptools==68.0.0
 pip==23.0.1
