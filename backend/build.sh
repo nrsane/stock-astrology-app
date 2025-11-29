@@ -1,12 +1,13 @@
 #!/bin/bash
-echo "🚀 Starting build process..."
+
+echo "🚀 Starting build process for Stock Astrology App..."
 
 # Install Python dependencies
-echo "📦 Installing dependencies..."
+echo "📦 Installing Python dependencies..."
 pip install -r requirements.txt
 
 # Download Swiss Ephemeris data
-echo "📥 Downloading ephemeris data..."
+echo "📥 Downloading Swiss Ephemeris data..."
 python -c "import swisseph; swisseph.download_ephe()"
 
 # Initialize database
