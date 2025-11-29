@@ -1,23 +1,21 @@
-# Core Flask
+# Core Flask with compatible versions
 Flask==2.3.3
 Werkzeug==2.3.7
 
-# Database
+# Database with specific compatible versions
 Flask-SQLAlchemy==3.0.5
-SQLAlchemy==2.0.23
-psycopg2-binary==2.9.7
+SQLAlchemy==1.4.46  # Use older stable version
 
-# CORS and deployment
+# CORS
 Flask-CORS==4.0.0
-gunicorn==21.2.0
 
-# Data processing (lightweight versions)
-pandas==2.0.3
-numpy==1.24.3
+# Web server
+gunicorn==20.1.0  # Use older stable version
 
 # Utilities
-python-dotenv==1.0.0
-requests==2.31.0
+python-dotenv==0.19.2
+click==8.1.3
 
-# Swiss Ephemeris (will add later after basic deployment works)
-# py-swisseph==2.10.3.1
+# Setuptools fix
+setuptools==65.5.0
+wheel==0.37.1
