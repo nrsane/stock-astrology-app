@@ -821,3 +821,44 @@ def add_stock():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+from flask import Flask, jsonify
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Stock Astrology App</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; text-align: center; }
+            .success { background: #d4edda; color: #155724; padding: 20px; border-radius: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="success">
+            <h1>🚀 Stock Astrology App</h1>
+            <h2>✅ Docker Deployment Successful!</h2>
+            <p>Python 3.11 + Flask + Docker</p>
+            <p>Next: Add database and KP astrology features</p>
+        </div>
+        <p><a href="/api/health">Health Check</a></p>
+    </body>
+    </html>
+    '''
+
+@app.route('/api/health')
+def health():
+    return jsonify({
+        "status": "healthy", 
+        "message": "Docker deployment working!",
+        "technology": "Python 3.11 + Docker"
+    })
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
