@@ -1,4 +1,110 @@
 from flask import Flask, jsonify, render_template, request
+import os
+from datetime import datetime
+import sys
+
+# Check and install missing dependencies
+try:
+    from flask_sqlalchemy import SQLAlchemy
+    from flask_cors import CORS
+    DB_AVAILABLE = True
+except ImportError as e:
+    print(f"❌ Database dependencies missing: {e}")
+    DB_AVAILABLE = False
+
+try:
+    import yfinance as yf
+    import pandas as pd
+    import numpy as np
+    DATA_AVAILABLE = True
+except ImportError as e:
+    print(f"❌ Data processing dependencies missing: {e}")
+    DATA_AVAILABLE = False
+
+app = Flask(__name__)
+
+if DB_AVAILABLE:
+    CORS(app)
+    # Database configuration
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///stocks.db')
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    db = SQLAlchemy(app)
+    
+    # Your existing models here...
+    class Stock(db.Model):
+        __tablename__ = 'stocks'
+        id = db.Column(db.Integer, primary_key=True)
+        symbol = db.Column(db.String(20), unique=True, nullable=False)
+        name = db.Column(db.String(100))
+        listing_date = db.Column(db.String(50), nullable=False)
+        listing_time = db.Column(db.String(50), default='10:00')
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+        def to_dict(self):
+            return {
+                'id': self.id,
+                'symbol': self.symbol,
+                'name': self.name,
+                'listing_date': self.listing_date,
+                'listing_time': self.listing_time,
+                'created_at': self.created_at.isoformat() if self.created_at else None
+            }
+
+    # Create tables
+    with app.app_context():
+        db.create_all()
+        print("✅ Database tables created successfully!")
+
+# Your routes here...
+@app.route('/')
+def home():
+    if not DB_AVAILABLE:
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Stock Astrology App</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; text-align: center; }
+                .error { background: #fee; color: #c00; padding: 20px; border-radius: 10px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <h1>📈 Stock Astrology App</h1>
+            <div class="error">
+                <h2>🚨 Dependencies Missing</h2>
+                <p>The application is currently installing required dependencies.</p>
+                <p>Please wait a few minutes and refresh the page.</p>
+                <p>Check the Render logs for installation progress.</p>
+            </div>
+        </body>
+        </html>
+        '''
+    return render_template('index.html')
+
+@app.route('/api/health')
+def health_check():
+    status_info = {
+        "status": "healthy" if DB_AVAILABLE else "installing_dependencies",
+        "message": "Stock Astrology App" if DB_AVAILABLE else "Dependencies being installed",
+        "database_available": DB_AVAILABLE,
+        "data_processing_available": DATA_AVAILABLE,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    return jsonify(status_info)
+
+# Add your other routes...
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+    
+from flask import Flask, jsonify, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
