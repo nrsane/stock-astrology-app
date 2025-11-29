@@ -4,5 +4,9 @@ services:
     env: python
     plan: free
     branch: main
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |-
+      python install_dependencies.py
+      python -c "import flask; print('✅ Flask installed successfully')"
+      python -c "import pandas; print('✅ Pandas installed successfully')"
+      python -c "import yfinance; print('✅ yfinance installed successfully')"
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
