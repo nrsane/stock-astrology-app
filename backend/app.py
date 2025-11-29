@@ -65,3 +65,13 @@ stock_data_manager = StockDataManager()
 init_db(app)
 
 # Rest of your routes remain the same...
+        # Calculate birth chart (if dependencies available)
+        if not chart_calculator or not significator_engine:
+            db.session.rollback()
+            return jsonify({
+                'error': 'KP Astrology features not available. Required dependencies missing.'
+            }), 500
+        
+        birth_chart_data = chart_calculator.calculate_stock_birth_chart(
+            symbol, listing_date, listing_time_str
+        )
