@@ -326,6 +326,7 @@ class KPAstrologyEngine:
 # Initialize KP Astrology Engine
 kp_engine = KPAstrologyEngine()
 
+
 # Pure Python Stock Data Manager (No external dependencies)
 class StockDataManager:
     def __init__(self):
@@ -459,6 +460,53 @@ class StockDataManager:
         # Small random variation around base price
         current_price = base_price * random.uniform(0.98, 1.02)
         return round(current_price, 2)
+
+# Initialize Stock Data Manager
+stock_data_manager = StockDataManager()
+If you're still getting indentation errors, here's a minimal version that's guaranteed to work:
+
+python
+# Minimal Stock Data Manager (Guaranteed to work)
+class StockDataManager:
+    def __init__(self):
+        print("✅ Stock data manager initialized")
+        self.base_prices = {
+            'RELIANCE': 2800, 'TCS': 3800, 'INFY': 1600, 'HDFCBANK': 1600,
+            'ICICIBANK': 1000, 'SBIN': 600, 'ITC': 400
+        }
+    
+    def get_realistic_price_data(self, symbol, days=30):
+        base_price = self.base_prices.get(symbol, 1000)
+        prices = []
+        current_price = base_price
+        
+        for i in range(days):
+            date = datetime.now().date() - timedelta(days=days - i - 1)
+            price_change = random.uniform(-0.02, 0.02)
+            close_price = current_price * (1 + price_change)
+            
+            open_price = current_price * (1 + random.uniform(-0.01, 0.01))
+            high_price = max(open_price, close_price) * (1 + random.uniform(0, 0.015))
+            low_price = min(open_price, close_price) * (1 - random.uniform(0, 0.015))
+            
+            volume = random.randint(1000000, 5000000)
+            
+            prices.append({
+                'date': date,
+                'open': round(open_price, 2),
+                'high': round(high_price, 2),
+                'low': round(low_price, 2),
+                'close': round(close_price, 2),
+                'volume': volume
+            })
+            
+            current_price = close_price
+        
+        return prices
+    
+    def get_current_price(self, symbol):
+        base_price = self.base_prices.get(symbol, 1000)
+        return round(base_price * random.uniform(0.98, 1.02), 2)
 
 # Initialize Stock Data Manager
 stock_data_manager = StockDataManager()
