@@ -326,11 +326,6 @@ class KPAstrologyEngine:
 # Initialize KP Astrology Engine
 kp_engine = KPAstrologyEngine()
 
-# Realistic Stock Data Manager (Demo data with realistic prices)
-class RealisticStockDataManager:
-from datetime import datetime, timedelta
-import random
-
 # Pure Python Stock Data Manager (No external dependencies)
 class StockDataManager:
     def __init__(self):
