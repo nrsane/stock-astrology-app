@@ -626,20 +626,45 @@ HTML_TEMPLATE = '''
             updateCounts();
         });
 
-        // Tab switching
-        function switchTab(tabId) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+// Tab switching
+function switchTab(tabId) {
+    console.log('Switching to tab:', tabId);
+    
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Show selected tab
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    // Activate the clicked button
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(button => {
+        if (button.textContent.includes(tabId.replace('-tab', ''))) {
+            button.classList.add('active');
         }
+    });
+    
+    // Load content based on active tab
+    if (currentStock) {
+        switch(tabId) {
+            case 'kp-chart-tab':
+                loadKPChart(currentStock.id);
+                break;
+            case 'prices-tab':
+                loadPriceData(currentStock.id);
+                break;
+            // Other tabs will load when their buttons are clicked
+        }
+    }
+}
 
         // Add stock
         async function addStock(event) {
@@ -710,30 +735,47 @@ HTML_TEMPLATE = '''
             }
         }
 
-        // Select stock
-        async function selectStock(stockId) {
-            try {
-                const response = await fetch(`/api/stocks/${stockId}`);
-                const stock = await response.json();
-                
-                currentStock = stock;
-                
-                // Update UI
-                document.querySelectorAll('.stock-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                event.target.classList.add('active');
-                
-                document.getElementById('analysisTitle').textContent = `Analysis: ${stock.symbol} - ${stock.name}`;
-                document.getElementById('stockAnalysis').style.display = 'block';
-                
-                // Load KP Chart
-                loadKPChart(stockId);
-                
-            } catch (error) {
-                console.error('Error selecting stock:', error);
+// Select stock
+async function selectStock(stockId) {
+    try {
+        console.log('Selecting stock:', stockId);
+        
+        const response = await fetch(`/api/stocks/${stockId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const stock = await response.json();
+        
+        currentStock = stock;
+        
+        // Update UI - fix event target issue
+        document.querySelectorAll('.stock-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Find and activate the clicked stock item
+        const stockItems = document.querySelectorAll('.stock-item');
+        for (let item of stockItems) {
+            if (item.textContent.includes(stock.symbol)) {
+                item.classList.add('active');
+                break;
             }
         }
+        
+        document.getElementById('analysisTitle').textContent = `Analysis: ${stock.symbol} - ${stock.name}`;
+        document.getElementById('stockAnalysis').style.display = 'block';
+        
+        // Load KP Chart
+        await loadKPChart(stockId);
+        
+        // Switch to KP Chart tab by default
+        switchTab('kp-chart-tab');
+        
+    } catch (error) {
+        console.error('Error selecting stock:', error);
+        alert('Error loading stock: ' + error.message);
+    }
+}
 
         // Load KP Chart
         async function loadKPChart(stockId) {
@@ -1020,8 +1062,10 @@ def index():
 def get_stocks():
     try:
         stocks = Stock.query.all()
+        print(f"Found {len(stocks)} stocks")  # Debug print
         return jsonify([stock.to_dict() for stock in stocks])
     except Exception as e:
+        print(f"Error in get_stocks: {e}")  # Debug print
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stocks', methods=['POST'])
@@ -1198,6 +1242,17 @@ def get_stats():
 # =============================================================================
 # MAIN APPLICATION
 # =============================================================================
-
+@app.route('/api/debug')
+def debug_info():
+    """Debug endpoint to check if API is working"""
+    stocks = Stock.query.all()
+    charts = KPBirthChart.query.all()
+    
+    return jsonify({
+        'total_stocks': len(stocks),
+        'total_charts': len(charts),
+        'stocks': [s.to_dict() for s in stocks],
+        'charts': [{'id': c.id, 'stock_id': c.stock_id} for c in charts]
+    })
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
