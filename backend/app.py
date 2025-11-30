@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime, timedelta
+import requests
 import json
 
 app = Flask(__name__)
@@ -58,73 +59,39 @@ with app.app_context():
     db.create_all()
     print("✅ Database tables created successfully!")
 
-# Stock Data Manager
-class StockDataManager:
+# Simple Stock Data Manager (No heavy dependencies)
+class SimpleStockDataManager:
     def __init__(self):
-        self.data_available = False
-        try:
-            import yfinance as yf
-            import pandas as pd
-            self.yf = yf
-            self.pd = pd
-            self.data_available = True
-            print("✅ yfinance and pandas imported successfully!")
-        except ImportError as e:
-            print(f"❌ Data dependencies not available: {e}")
-
-    def fetch_stock_data(self, symbol, period="1mo"):
-        """Fetch stock data from Yahoo Finance"""
-        if not self.data_available:
-            return None
+        print("✅ Simple stock data manager initialized")
+    
+    def get_sample_price_data(self, symbol, days=30):
+        """Generate sample price data (will replace with real API later)"""
+        import random
+        from datetime import datetime, timedelta
+        
+        base_price = random.uniform(100, 5000)
+        prices = []
+        
+        for i in range(days):
+            date = datetime.now().date() - timedelta(days=days - i - 1)
+            price_change = random.uniform(-0.05, 0.05)
+            close_price = base_price * (1 + price_change)
             
-        try:
-            yf_symbol = f"{symbol}.NS"
-            stock = self.yf.Ticker(yf_symbol)
-            hist_data = stock.history(period=period)
+            prices.append({
+                'date': date,
+                'open': close_price * (1 + random.uniform(-0.02, 0.01)),
+                'high': close_price * (1 + random.uniform(0, 0.03)),
+                'low': close_price * (1 + random.uniform(-0.03, 0)),
+                'close': close_price,
+                'volume': random.randint(100000, 5000000)
+            })
             
-            if hist_data.empty:
-                print(f"No data found for {symbol}")
-                return None
-                
-            return hist_data
-        except Exception as e:
-            print(f"Error fetching data for {symbol}: {e}")
-            return None
-
-    def store_stock_prices(self, stock_id, hist_data):
-        """Store historical prices in database"""
-        if not self.data_available:
-            return False
-            
-        try:
-            for date, row in hist_data.iterrows():
-                # Check if record already exists
-                existing = StockPrice.query.filter_by(
-                    stock_id=stock_id, 
-                    date=date.date()
-                ).first()
-                
-                if not existing and not self.pd.isna(row['Close']):
-                    stock_price = StockPrice(
-                        stock_id=stock_id,
-                        date=date.date(),
-                        open_price=float(row['Open']),
-                        high_price=float(row['High']),
-                        low_price=float(row['Low']),
-                        close_price=float(row['Close']),
-                        volume=int(row['Volume']) if self.pd.notna(row['Volume']) else 0
-                    )
-                    db.session.add(stock_price)
-            
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error storing prices: {e}")
-            return False
+            base_price = close_price
+        
+        return prices
 
 # Initialize stock data manager
-stock_data_manager = StockDataManager()
+stock_data_manager = SimpleStockDataManager()
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -159,6 +126,10 @@ HTML_TEMPLATE = '''
             background: #d4edda;
             border-left-color: #28a745;
         }
+        .phase.demo {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -192,7 +163,6 @@ HTML_TEMPLATE = '''
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         .btn-success { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .btn-warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .result { 
             padding: 15px; 
             margin: 10px 0; 
@@ -215,27 +185,6 @@ HTML_TEMPLATE = '''
             background: #e3f2fd;
             border-left: 4px solid #667eea;
         }
-        .tab-container { margin: 20px 0; }
-        .tab-buttons {
-            display: flex;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid #e1e5e9;
-        }
-        .tab-button {
-            padding: 1rem 2rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #666;
-            border-bottom: 3px solid transparent;
-        }
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
         .price-data { 
             max-height: 400px; 
             overflow-y: auto; 
@@ -252,9 +201,15 @@ HTML_TEMPLATE = '''
             font-weight: bold;
             background: #f8f9fa;
         }
+        .demo-note {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
         @media (max-width: 768px) { 
             .grid { grid-template-columns: 1fr; } 
-            .tab-buttons { flex-direction: column; }
             .price-item { grid-template-columns: 1fr; }
         }
     </style>
@@ -264,15 +219,21 @@ HTML_TEMPLATE = '''
         <h1>🚀 Stock Astrology App</h1>
         
         <div class="phase completed">
-            <h2>✅ PHASE 3: REAL STOCK PRICE DATA</h2>
-            <p><strong>Live NSE Stock Prices Integrated!</strong></p>
-            <p>Data Source: Yahoo Finance | Database: SQLite | Price Records: <span id="priceRecords">0</span></p>
+            <h2>✅ PHASE 3: STOCK PRICE DATA (SIMPLIFIED)</h2>
+            <p><strong>Stock Management with Demo Price Data Ready!</strong></p>
+            <p>Database: SQLite | Stocks: <span id="stockCount">0</span> | Price Records: <span id="priceRecords">0</span></p>
+        </div>
+
+        <div class="phase demo">
+            <h3>📊 Demo Mode Active</h3>
+            <p><strong>Note:</strong> Using demo price data to avoid dependency issues.</p>
+            <p>Real stock prices will be added in the next phase after we stabilize the deployment.</p>
         </div>
 
         <div class="grid">
             <!-- Add Stock Form -->
             <div class="phase">
-                <h3>📊 Add New Stock</h3>
+                <h3>📈 Add New Stock</h3>
                 <form onsubmit="addStock(event)">
                     <div class="form-group">
                         <label for="symbol">Stock Symbol (NSE):</label>
@@ -294,7 +255,7 @@ HTML_TEMPLATE = '''
                         <input type="time" id="listingTime" value="10:00">
                     </div>
                     
-                    <button type="submit">Add Stock & Fetch Prices</button>
+                    <button type="submit">Add Stock to Database</button>
                 </form>
                 <div id="formResult" class="result" style="display: none;"></div>
             </div>
@@ -315,57 +276,50 @@ HTML_TEMPLATE = '''
         <div class="phase" id="stockAnalysis" style="display: none;">
             <h2 id="analysisTitle">Stock Analysis</h2>
             
-            <div class="tab-container">
-                <div class="tab-buttons">
-                    <button class="tab-button active" onclick="switchTab('prices-tab')">Price Data</button>
-                    <button class="tab-button" onclick="switchTab('fetch-tab')">Fetch Prices</button>
-                    <button class="tab-button" onclick="switchTab('stats-tab')">Statistics</button>
-                </div>
-                
-                <!-- Prices Tab -->
-                <div id="prices-tab" class="tab-content active">
-                    <div class="price-data">
-                        <div class="price-item price-header">
-                            <div>Date</div>
-                            <div>Open</div>
-                            <div>High</div>
-                            <div>Low</div>
-                            <div>Close</div>
-                        </div>
-                        <div id="priceList">Select a stock and fetch prices to see data</div>
-                    </div>
-                </div>
-                
-                <!-- Fetch Tab -->
-                <div id="fetch-tab" class="tab-content">
-                    <div style="margin-bottom: 1rem;">
-                        <label>Fetch Period:</label>
-                        <select id="fetchPeriod">
-                            <option value="1mo">1 Month</option>
-                            <option value="3mo">3 Months</option>
-                            <option value="6mo">6 Months</option>
-                            <option value="1y">1 Year</option>
-                        </select>
-                    </div>
-                    <button onclick="fetchStockPrices(currentStock)" class="btn-success">Fetch Latest Prices</button>
-                    <div id="fetchResult" class="result" style="display: none; margin-top: 1rem;"></div>
-                </div>
-                
-                <!-- Stats Tab -->
-                <div id="stats-tab" class="tab-content">
-                    <div id="stockStats">
-                        <div class="result">Fetch price data to see statistics</div>
-                    </div>
-                </div>
+            <div class="demo-note">
+                <strong>Demo Data:</strong> Price data is simulated for demonstration. Real market data will be integrated in Phase 4.
             </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <button onclick="generateDemoPrices(currentStock)" class="btn-success">Generate Demo Price Data</button>
+                <select id="demoDays" style="width: auto; margin-left: 1rem;">
+                    <option value="7">7 Days</option>
+                    <option value="30" selected>30 Days</option>
+                    <option value="90">90 Days</option>
+                </select>
+            </div>
+            
+            <div class="price-data">
+                <div class="price-item price-header">
+                    <div>Date</div>
+                    <div>Open</div>
+                    <div>High</div>
+                    <div>Low</div>
+                    <div>Close</div>
+                </div>
+                <div id="priceList">Generate demo data to see price information</div>
+            </div>
+            
+            <div id="priceStats" style="margin-top: 20px;"></div>
         </div>
 
         <div class="phase">
-            <h3>📈 Deployment Progress</h3>
+            <h3>📊 Deployment Progress</h3>
             <p><strong>Phase 1:</strong> ✅ Basic Flask App</p>
             <p><strong>Phase 2:</strong> ✅ Database + Stock Management</p>
-            <p><strong>Phase 3:</strong> ✅ Real Stock Price Data (Current)</p>
-            <p><strong>Phase 4:</strong> ➡️ KP Astrology Features</p>
+            <p><strong>Phase 3:</strong> ✅ Stock Management + Demo Prices (Current)</p>
+            <p><strong>Phase 4:</strong> ➡️ Real Stock Prices + KP Astrology</p>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <h3>🔧 Next Steps</h3>
+            <p>After this phase stabilizes, we'll add:</p>
+            <ul style="display: inline-block; text-align: left;">
+                <li>Real NSE stock price integration</li>
+                <li>KP Astrology birth charts</li>
+                <li>House significator analysis</li>
+                <li>Price correlation with planetary movements</li>
+            </ul>
         </div>
     </div>
 
@@ -379,14 +333,6 @@ HTML_TEMPLATE = '''
             updateStats();
         });
 
-        // Tab switching
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-
         // Add stock
         async function addStock(e) {
             e.preventDefault();
@@ -398,7 +344,7 @@ HTML_TEMPLATE = '''
             const resultDiv = document.getElementById('formResult');
             resultDiv.style.display = 'block';
             resultDiv.className = 'result';
-            resultDiv.innerHTML = 'Adding stock and fetching prices...';
+            resultDiv.innerHTML = 'Adding stock to database...';
             
             try {
                 const response = await fetch('/api/stocks', {
@@ -420,11 +366,8 @@ HTML_TEMPLATE = '''
                         <h4>✅ ${data.message}</h4>
                         <p><strong>Symbol:</strong> ${data.stock.symbol}</p>
                         <p><strong>Name:</strong> ${data.stock.name}</p>
-                        <p>Now fetching current price data...</p>
+                        <p><strong>Listing:</strong> ${data.stock.listing_date} at ${data.stock.listing_time}</p>
                     `;
-                    
-                    // Auto-fetch prices for new stock
-                    setTimeout(() => fetchStockPrices(symbol), 1000);
                     
                     // Clear form and refresh
                     document.getElementById('symbol').value = '';
@@ -472,7 +415,7 @@ HTML_TEMPLATE = '''
         }
 
         // Select stock
-        async function selectStock(symbol) {
+        function selectStock(symbol) {
             currentStock = symbol;
             
             // Update UI
@@ -480,17 +423,46 @@ HTML_TEMPLATE = '''
             document.getElementById(`stock-${symbol}`).classList.add('active');
             
             document.getElementById('stockAnalysis').style.display = 'block';
-            document.getElementById('analysisTitle').textContent = `${symbol} - Price Analysis`;
+            document.getElementById('analysisTitle').textContent = `${symbol} - Price Analysis (Demo)`;
             
-            // Load price data
-            loadStockPrices(symbol);
-            switchTab('prices-tab');
+            // Clear previous data
+            document.getElementById('priceList').innerHTML = 'Generate demo data to see price information';
+            document.getElementById('priceStats').innerHTML = '';
+        }
+
+        // Generate demo prices
+        async function generateDemoPrices(symbol) {
+            if (!symbol) {
+                alert('Please select a stock first');
+                return;
+            }
+            
+            const days = document.getElementById('demoDays').value;
+            
+            try {
+                const response = await fetch(`/api/stocks/${symbol}/demo-prices`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ days: parseInt(days) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadStockPrices(symbol);
+                    updateStats();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
         }
 
         // Load stock prices
         async function loadStockPrices(symbol) {
             try {
-                const response = await fetch(`/api/stocks/${symbol}/prices?days=30`);
+                const response = await fetch(`/api/stocks/${symbol}/prices`);
                 const data = await response.json();
                 
                 const priceList = document.getElementById('priceList');
@@ -505,70 +477,27 @@ HTML_TEMPLATE = '''
                         </div>
                     `).join('');
                     
-                    updateStatistics(data.prices);
+                    updatePriceStatistics(data.prices);
                 } else {
-                    priceList.innerHTML = '<div class="result warning">No price data available. Fetch prices first.</div>';
+                    priceList.innerHTML = '<div class="result warning">No price data available. Generate demo data first.</div>';
                 }
             } catch (error) {
                 document.getElementById('priceList').innerHTML = '<div class="result error">Error loading prices</div>';
             }
         }
 
-        // Fetch stock prices
-        async function fetchStockPrices(symbol) {
-            if (!symbol) {
-                alert('Please select a stock first');
-                return;
-            }
-            
-            const period = document.getElementById('fetchPeriod').value;
-            const resultDiv = document.getElementById('fetchResult');
-            resultDiv.style.display = 'block';
-            resultDiv.className = 'result';
-            resultDiv.innerHTML = `Fetching ${period} of price data for ${symbol}...`;
-            
-            try {
-                const response = await fetch(`/api/stocks/${symbol}/fetch-prices`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ period: period })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    resultDiv.className = 'result success';
-                    resultDiv.innerHTML = `
-                        <h4>✅ ${data.message}</h4>
-                        <p><strong>Records Fetched:</strong> ${data.records_fetched}</p>
-                        <p><strong>Period:</strong> ${data.period}</p>
-                    `;
-                    
-                    // Reload price data
-                    loadStockPrices(symbol);
-                    updateStats();
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.innerHTML = `<h4>❌ Error</h4><p>${data.error}</p>`;
-                }
-            } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `<h4>❌ Network Error</h4><p>${error.message}</p>`;
-            }
-        }
-
-        // Update statistics
-        function updateStatistics(prices) {
+        // Update price statistics
+        function updatePriceStatistics(prices) {
             if (!prices || prices.length === 0) return;
             
             const latest = prices[prices.length - 1];
             const first = prices[0];
             const change = ((latest.close - first.close) / first.close) * 100;
             
-            document.getElementById('stockStats').innerHTML = `
+            document.getElementById('priceStats').innerHTML = `
                 <div class="grid">
                     <div class="result success">
-                        <h4>Current Price</h4>
+                        <h4>Current Price (Demo)</h4>
                         <p style="font-size: 1.5rem; font-weight: bold;">₹${latest.close.toFixed(2)}</p>
                         <p>${latest.date}</p>
                     </div>
@@ -586,6 +515,7 @@ HTML_TEMPLATE = '''
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
+                document.getElementById('stockCount').textContent = data.stocks_count || 0;
                 document.getElementById('priceRecords').textContent = data.price_records || 0;
             } catch (error) {
                 console.error('Error updating stats:', error);
@@ -607,13 +537,12 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "phase": "3",
-        "message": "Real Stock Price Data Integrated",
+        "message": "Stock Management with Demo Prices",
         "database": "sqlite",
-        "data_available": stock_data_manager.data_available,
         "stocks_count": stock_count,
         "price_records": price_count,
         "timestamp": datetime.utcnow().isoformat(),
-        "next_phase": "KP Astrology Features"
+        "next_phase": "Real stock prices + KP Astrology"
     })
 
 @app.route('/api/stocks', methods=['GET'])
@@ -669,45 +598,50 @@ def add_stock():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/stocks/<symbol>/fetch-prices', methods=['POST'])
-def fetch_stock_prices(symbol):
-    """Fetch and store current stock prices"""
+@app.route('/api/stocks/<symbol>/demo-prices', methods=['POST'])
+def generate_demo_prices(symbol):
+    """Generate demo price data"""
     try:
         stock = Stock.query.filter_by(symbol=symbol.upper()).first()
         if not stock:
             return jsonify({'success': False, 'error': 'Stock not found'}), 404
         
         data = request.get_json()
-        period = data.get('period', '1mo')
+        days = data.get('days', 30)
         
-        if not stock_data_manager.data_available:
-            return jsonify({
-                'success': False, 
-                'error': 'Data processing dependencies not available'
-            }), 500
-        
-        # Fetch data from Yahoo Finance
-        hist_data = stock_data_manager.fetch_stock_data(symbol, period=period)
-        
-        if hist_data is None:
-            return jsonify({'success': False, 'error': 'Failed to fetch stock data'}), 500
+        # Generate demo data
+        demo_prices = stock_data_manager.get_sample_price_data(symbol, days)
         
         # Store in database
-        success = stock_data_manager.store_stock_prices(stock.id, hist_data)
+        for price_data in demo_prices:
+            existing = StockPrice.query.filter_by(
+                stock_id=stock.id, 
+                date=price_data['date']
+            ).first()
+            
+            if not existing:
+                stock_price = StockPrice(
+                    stock_id=stock.id,
+                    date=price_data['date'],
+                    open_price=price_data['open'],
+                    high_price=price_data['high'],
+                    low_price=price_data['low'],
+                    close_price=price_data['close'],
+                    volume=price_data['volume']
+                )
+                db.session.add(stock_price)
         
-        if success:
-            price_count = StockPrice.query.filter_by(stock_id=stock.id).count()
-            return jsonify({
-                'success': True,
-                'message': f'Stock prices fetched and stored for {symbol}',
-                'records_fetched': len(hist_data),
-                'price_records': price_count,
-                'period': period
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Failed to store price data'}), 500
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Demo price data generated for {symbol}',
+            'records_generated': len(demo_prices),
+            'period': f'{days} days'
+        })
             
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/stocks/<symbol>/prices', methods=['GET'])
@@ -718,22 +652,14 @@ def get_stock_prices(symbol):
         if not stock:
             return jsonify({'success': False, 'error': 'Stock not found'}), 404
         
-        # Get date range from query parameters
-        days = request.args.get('days', 30, type=int)
-        end_date = datetime.utcnow().date()
-        start_date = end_date - timedelta(days=days)
-        
-        prices = StockPrice.query.filter(
-            StockPrice.stock_id == stock.id,
-            StockPrice.date >= start_date
-        ).order_by(StockPrice.date).all()
+        prices = StockPrice.query.filter_by(stock_id=stock.id).order_by(StockPrice.date.desc()).limit(30).all()
         
         return jsonify({
             'success': True,
             'symbol': symbol,
             'prices': [price.to_dict() for price in prices],
-            'period': f'{start_date} to {end_date}',
-            'count': len(prices)
+            'count': len(prices),
+            'note': 'Demo data - real prices coming in Phase 4'
         })
         
     except Exception as e:
@@ -744,15 +670,8 @@ def ready_for_phase4():
     return jsonify({
         "phase": "4",
         "status": "ready",
-        "instructions": "Add KP Astrology features",
-        "features": [
-            "Birth chart calculations",
-            "House significators", 
-            "Planetary positions",
-            "Correlation analysis",
-            "Price predictions"
-        ],
-        "note": "Final phase - complete astrology integration"
+        "instructions": "Add KP Astrology features with real stock prices",
+        "note": "Current deployment is stable. Next phase will add astrology calculations."
     })
 
 if __name__ == '__main__':
