@@ -327,85 +327,8 @@ class SimpleStockDataManager:
 
 stock_data_manager = SimpleStockDataManager()
 
+# HTML Template (make sure this is properly closed)
 HTML_TEMPLATE = '''
-# =============================================================================
-# API Routes - ADD THIS SECTION RIGHT HERE
-# =============================================================================
-
-@app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/api/stocks', methods=['GET'])
-def get_stocks():
-    try:
-        stocks = Stock.query.all()
-        return jsonify([stock.to_dict() for stock in stocks])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/stocks', methods=['POST'])
-def add_stock():
-    try:
-        data = request.get_json()
-        
-        # Check if stock already exists
-        existing_stock = Stock.query.filter_by(symbol=data['symbol']).first()
-        if existing_stock:
-            return jsonify({'error': f"Stock {data['symbol']} already exists"}), 400
-        
-        # Create new stock
-        stock = Stock(
-            symbol=data['symbol'],
-            name=data.get('name', data['symbol']),
-            listing_date=data['listing_date'],
-            listing_time=data.get('listing_time', '10:00')
-        )
-        db.session.add(stock)
-        db.session.commit()
-        
-        # Generate KP birth chart
-        listing_datetime_str = f"{data['listing_date']} {data.get('listing_time', '10:00')}"
-        listing_datetime = datetime.strptime(listing_datetime_str, '%Y-%m-%d %H:%M')
-        
-        birth_chart_data = kp_engine.calculate_birth_chart(listing_datetime)
-        
-        if birth_chart_data:
-            kp_chart = KPBirthChart(
-                stock_id=stock.id,
-                ascendant_degree=birth_chart_data['ascendant_degree'],
-                planet_positions=birth_chart_data['planet_positions'],
-                house_significators=birth_chart_data['house_significators']
-            )
-            db.session.add(kp_chart)
-            db.session.commit()
-        
-        return jsonify(stock.to_dict())
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# ... add ALL the other API routes from my previous message ...
-
-@app.route('/api/stats')
-def get_stats():
-    try:
-        total_stocks = Stock.query.count()
-        total_charts = KPBirthChart.query.count()
-        
-        return jsonify({
-            'total_stocks': total_stocks,
-            'total_charts': total_charts
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
-# =============================================================================
-# END OF API ROUTES - then continue with:
-# =============================================================================
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -696,7 +619,7 @@ if __name__ == '__main__':
     <script>
         let currentStock = null;
 
-// Initialize
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadStocks();
             document.getElementById('predictionDate').valueAsDate = new Date();
@@ -1083,3 +1006,198 @@ if __name__ == '__main__':
     </script>
 </body>
 </html>
+'''
+
+# =============================================================================
+# FLASK API ROUTES
+# =============================================================================
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/api/stocks', methods=['GET'])
+def get_stocks():
+    try:
+        stocks = Stock.query.all()
+        return jsonify([stock.to_dict() for stock in stocks])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks', methods=['POST'])
+def add_stock():
+    try:
+        data = request.get_json()
+        
+        # Check if stock already exists
+        existing_stock = Stock.query.filter_by(symbol=data['symbol']).first()
+        if existing_stock:
+            return jsonify({'error': f"Stock {data['symbol']} already exists"}), 400
+        
+        # Create new stock
+        stock = Stock(
+            symbol=data['symbol'],
+            name=data.get('name', data['symbol']),
+            listing_date=data['listing_date'],
+            listing_time=data.get('listing_time', '10:00')
+        )
+        db.session.add(stock)
+        db.session.commit()
+        
+        # Generate KP birth chart
+        listing_datetime_str = f"{data['listing_date']} {data.get('listing_time', '10:00')}"
+        listing_datetime = datetime.strptime(listing_datetime_str, '%Y-%m-%d %H:%M')
+        
+        birth_chart_data = kp_engine.calculate_birth_chart(listing_datetime)
+        
+        if birth_chart_data:
+            kp_chart = KPBirthChart(
+                stock_id=stock.id,
+                ascendant_degree=birth_chart_data['ascendant_degree'],
+                planet_positions=birth_chart_data['planet_positions'],
+                house_significators=birth_chart_data['house_significators']
+            )
+            db.session.add(kp_chart)
+            db.session.commit()
+        
+        return jsonify(stock.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>')
+def get_stock(stock_id):
+    try:
+        stock = Stock.query.get_or_404(stock_id)
+        return jsonify(stock.to_dict())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>/kp-chart')
+def get_kp_chart(stock_id):
+    try:
+        kp_chart = KPBirthChart.query.filter_by(stock_id=stock_id).first()
+        if not kp_chart:
+            return jsonify({'error': 'KP chart not found'}), 404
+        
+        return jsonify({
+            'ascendant_degree': kp_chart.ascendant_degree,
+            'ascendant_sign': kp_engine.signs[int(kp_chart.ascendant_degree / 30)],
+            'planet_positions': kp_chart.planet_positions,
+            'house_significators': kp_chart.house_significators
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>/prices')
+def get_stock_prices(stock_id):
+    try:
+        prices = StockPrice.query.filter_by(stock_id=stock_id).order_by(StockPrice.date.desc()).limit(100).all()
+        return jsonify([price.to_dict() for price in prices])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>/generate-prices', methods=['POST'])
+def generate_prices(stock_id):
+    try:
+        data = request.get_json()
+        days = data.get('days', 30)
+        
+        stock = Stock.query.get_or_404(stock_id)
+        
+        # Clear existing prices
+        StockPrice.query.filter_by(stock_id=stock_id).delete()
+        
+        # Generate demo prices
+        demo_prices = stock_data_manager.get_sample_price_data(stock.symbol, days)
+        
+        for price_data in demo_prices:
+            price = StockPrice(
+                stock_id=stock_id,
+                date=price_data['date'],
+                open_price=price_data['open'],
+                high_price=price_data['high'],
+                low_price=price_data['low'],
+                close_price=price_data['close'],
+                volume=price_data['volume']
+            )
+            db.session.add(price)
+        
+        db.session.commit()
+        
+        return jsonify({'generated': len(demo_prices), 'message': 'Demo prices generated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>/correlation', methods=['POST'])
+def analyze_correlation(stock_id):
+    try:
+        stock = Stock.query.get_or_404(stock_id)
+        kp_chart = KPBirthChart.query.filter_by(stock_id=stock_id).first()
+        
+        if not kp_chart:
+            return jsonify({'error': 'KP chart not found'}), 404
+        
+        # Get price data
+        prices = StockPrice.query.filter_by(stock_id=stock_id).order_by(StockPrice.date.asc()).all()
+        
+        if not prices:
+            return jsonify({'error': 'No price data available'}), 400
+        
+        # Prepare birth chart data
+        birth_chart_data = {
+            'house_significators': kp_chart.house_significators,
+            'planet_positions': kp_chart.planet_positions
+        }
+        
+        # Analyze correlation
+        correlation_result = kp_engine.analyze_correlation(prices, birth_chart_data)
+        
+        return jsonify(correlation_result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks/<int:stock_id>/predict', methods=['POST'])
+def predict_movement(stock_id):
+    try:
+        data = request.get_json()
+        prediction_date = data.get('prediction_date')
+        
+        stock = Stock.query.get_or_404(stock_id)
+        kp_chart = KPBirthChart.query.filter_by(stock_id=stock_id).first()
+        
+        if not kp_chart:
+            return jsonify({'error': 'KP chart not found'}), 404
+        
+        # Prepare birth chart data
+        birth_chart_data = {
+            'house_significators': kp_chart.house_significators
+        }
+        
+        # Get prediction
+        prediction = kp_engine.predict_future_movement(birth_chart_data, prediction_date)
+        
+        return jsonify(prediction)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats')
+def get_stats():
+    try:
+        total_stocks = Stock.query.count()
+        total_charts = KPBirthChart.query.count()
+        
+        return jsonify({
+            'total_stocks': total_stocks,
+            'total_charts': total_charts
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# MAIN APPLICATION
+# =============================================================================
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
