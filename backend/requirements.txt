@@ -1,2 +1,7 @@
+# CORE
 Flask==2.3.3
 gunicorn==21.2.0
+
+# DATABASE (SQLite first - no PostgreSQL dependencies)
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==1.4.46
