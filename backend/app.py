@@ -172,80 +172,80 @@ class KPAstrologyEngine:
                     'Jupiter', 'Saturn', 'Mercury']
         return sub_lords[nakshatra_index % 9]
 
-def analyze_correlation(self, stock_prices, birth_chart):
-    """Analyze correlation between planetary positions and price movements"""
-    try:
-        if not stock_prices or len(stock_prices) < 10:
-            return {"error": "Insufficient price data. Need at least 10 days of data."}
-        
-        print(f"Analyzing correlation with {len(stock_prices)} price records")  # Debug
-        
-        analysis = []
-        planet_influences = {
-            'Sun': 0.7, 'Moon': 0.8, 'Mars': -0.6, 'Mercury': 0.5,
-            'Jupiter': 0.9, 'Venus': 0.8, 'Saturn': -0.7, 'Rahu': -0.5, 'Ketu': -0.5
-        }
-        
-        # Get 2nd and 11th house significators (wealth and gains)
-        house_2_significators = birth_chart['house_significators'].get('2', {}).get('all_significators', [])
-        house_11_significators = birth_chart['house_significators'].get('11', {}).get('all_significators', [])
-        all_significators = list(set(house_2_significators + house_11_significators))
-        
-        print(f"Significators found: {all_significators}")  # Debug
-        
-        # Simple correlation analysis
-        total_days = len(stock_prices)
-        correct_predictions = 0
-        
-        for i in range(1, len(stock_prices)):
-            price_today = stock_prices[i]
-            price_yesterday = stock_prices[i-1]
+    def analyze_correlation(self, stock_prices, birth_chart):
+        """Analyze correlation between planetary positions and price movements"""
+        try:
+            if not stock_prices or len(stock_prices) < 10:
+                return {"error": "Insufficient price data. Need at least 10 days of data."}
             
-            # Calculate price change percentage
-            if price_yesterday.close_price and price_yesterday.close_price > 0:
-                price_change = ((price_today.close_price - price_yesterday.close_price) / 
-                              price_yesterday.close_price) * 100
-            else:
-                price_change = 0
+            print(f"Analyzing correlation with {len(stock_prices)} price records")  # Debug
             
-            # Calculate astrological score
-            astro_score = 0
-            for planet in all_significators:
-                if planet in planet_influences:
-                    astro_score += planet_influences[planet]
+            analysis = []
+            planet_influences = {
+                'Sun': 0.7, 'Moon': 0.8, 'Mars': -0.6, 'Mercury': 0.5,
+                'Jupiter': 0.9, 'Venus': 0.8, 'Saturn': -0.7, 'Rahu': -0.5, 'Ketu': -0.5
+            }
             
-            # Simple prediction: positive score = bullish, negative = bearish
-            predicted_direction = 1 if astro_score > 0 else -1
-            actual_direction = 1 if price_change > 0 else -1
+            # Get 2nd and 11th house significators (wealth and gains)
+            house_2_significators = birth_chart['house_significators'].get('2', {}).get('all_significators', [])
+            house_11_significators = birth_chart['house_significators'].get('11', {}).get('all_significators', [])
+            all_significators = list(set(house_2_significators + house_11_significators))
             
-            if predicted_direction == actual_direction:
-                correct_predictions += 1
+            print(f"Significators found: {all_significators}")  # Debug
             
-            analysis.append({
-                'date': price_today.date.isoformat(),
-                'price_change': round(price_change, 2),
-                'astro_score': round(astro_score, 2),
-                'predicted_direction': 'UP' if predicted_direction == 1 else 'DOWN',
-                'actual_direction': 'UP' if actual_direction == 1 else 'DOWN',
-                'prediction_correct': predicted_direction == actual_direction
-            })
-        
-        accuracy = round((correct_predictions / (total_days - 1)) * 100, 2) if total_days > 1 else 0
-        
-        print(f"Analysis complete: {correct_predictions}/{total_days-1} correct, {accuracy}% accuracy")  # Debug
-        
-        return {
-            'accuracy': accuracy,
-            'total_days_analyzed': total_days - 1,
-            'correct_predictions': correct_predictions,
-            'key_significators': all_significators,
-            'daily_analysis': analysis[-10:],  # Last 10 days
-            'insights': self.generate_insights(accuracy, all_significators)
-        }
-        
-    except Exception as e:
-        print(f"Error in analyze_correlation: {e}")  # Debug
-        return {"error": f"Analysis failed: {str(e)}"}
+            # Simple correlation analysis
+            total_days = len(stock_prices)
+            correct_predictions = 0
+            
+            for i in range(1, len(stock_prices)):
+                price_today = stock_prices[i]
+                price_yesterday = stock_prices[i-1]
+                
+                # Calculate price change percentage
+                if price_yesterday.close_price and price_yesterday.close_price > 0:
+                    price_change = ((price_today.close_price - price_yesterday.close_price) / 
+                                  price_yesterday.close_price) * 100
+                else:
+                    price_change = 0
+                
+                # Calculate astrological score
+                astro_score = 0
+                for planet in all_significators:
+                    if planet in planet_influences:
+                        astro_score += planet_influences[planet]
+                
+                # Simple prediction: positive score = bullish, negative = bearish
+                predicted_direction = 1 if astro_score > 0 else -1
+                actual_direction = 1 if price_change > 0 else -1
+                
+                if predicted_direction == actual_direction:
+                    correct_predictions += 1
+                
+                analysis.append({
+                    'date': price_today.date.isoformat(),
+                    'price_change': round(price_change, 2),
+                    'astro_score': round(astro_score, 2),
+                    'predicted_direction': 'UP' if predicted_direction == 1 else 'DOWN',
+                    'actual_direction': 'UP' if actual_direction == 1 else 'DOWN',
+                    'prediction_correct': predicted_direction == actual_direction
+                })
+            
+            accuracy = round((correct_predictions / (total_days - 1)) * 100, 2) if total_days > 1 else 0
+            
+            print(f"Analysis complete: {correct_predictions}/{total_days-1} correct, {accuracy}% accuracy")  # Debug
+            
+            return {
+                'accuracy': accuracy,
+                'total_days_analyzed': total_days - 1,
+                'correct_predictions': correct_predictions,
+                'key_significators': all_significators,
+                'daily_analysis': analysis[-10:],  # Last 10 days
+                'insights': self.generate_insights(accuracy, all_significators)
+            }
+            
+        except Exception as e:
+            print(f"Error in analyze_correlation: {e}")  # Debug
+            return {"error": f"Analysis failed: {str(e)}"}
 
     def generate_insights(self, accuracy, significators):
         """Generate insights based on correlation analysis"""
@@ -268,45 +268,60 @@ def analyze_correlation(self, stock_prices, birth_chart):
 
     def predict_future_movement(self, birth_chart, prediction_date):
         """Predict future price movement based on KP astrology"""
-        # Simplified prediction based on current significators
-        house_2 = birth_chart['house_significators'][2]
-        house_11 = birth_chart['house_significators'][11]
-        
-        # Calculate prediction score
-        score = 0
-        planet_weights = {
-            'Sun': 0.7, 'Moon': 0.8, 'Mars': -0.6, 'Mercury': 0.5,
-            'Jupiter': 0.9, 'Venus': 0.8, 'Saturn': -0.7, 'Rahu': -0.5, 'Ketu': -0.5
-        }
-        
-        for planet in house_2['all_significators'] + house_11['all_significators']:
-            if planet in planet_weights:
-                score += planet_weights[planet]
-        
-        # Determine prediction
-        if score > 1.0:
-            prediction = "STRONGLY_BULLISH"
-            confidence = "HIGH"
-        elif score > 0.3:
-            prediction = "BULLISH" 
-            confidence = "MEDIUM"
-        elif score > -0.3:
-            prediction = "NEUTRAL"
-            confidence = "LOW"
-        elif score > -1.0:
-            prediction = "BEARISH"
-            confidence = "MEDIUM"
-        else:
-            prediction = "STRONGLY_BEARISH"
-            confidence = "HIGH"
-        
-        return {
-            'prediction': prediction,
-            'confidence': confidence,
-            'prediction_score': round(score, 2),
-            'key_factors': house_2['all_significators'] + house_11['all_significators'],
-            'prediction_date': prediction_date
-        }
+        try:
+            # Simplified prediction based on current significators
+            house_2 = birth_chart['house_significators'].get('2', {})
+            house_11 = birth_chart['house_significators'].get('11', {})
+            
+            # Calculate prediction score
+            score = 0
+            planet_weights = {
+                'Sun': 0.7, 'Moon': 0.8, 'Mars': -0.6, 'Mercury': 0.5,
+                'Jupiter': 0.9, 'Venus': 0.8, 'Saturn': -0.7, 'Rahu': -0.5, 'Ketu': -0.5
+            }
+            
+            house_2_significators = house_2.get('all_significators', [])
+            house_11_significators = house_11.get('all_significators', [])
+            
+            for planet in house_2_significators + house_11_significators:
+                if planet in planet_weights:
+                    score += planet_weights[planet]
+            
+            # Determine prediction
+            if score > 1.0:
+                prediction = "STRONGLY_BULLISH"
+                confidence = "HIGH"
+            elif score > 0.3:
+                prediction = "BULLISH" 
+                confidence = "MEDIUM"
+            elif score > -0.3:
+                prediction = "NEUTRAL"
+                confidence = "LOW"
+            elif score > -1.0:
+                prediction = "BEARISH"
+                confidence = "MEDIUM"
+            else:
+                prediction = "STRONGLY_BEARISH"
+                confidence = "HIGH"
+            
+            return {
+                'prediction': prediction,
+                'confidence': confidence,
+                'prediction_score': round(score, 2),
+                'key_factors': house_2_significators + house_11_significators,
+                'prediction_date': prediction_date
+            }
+            
+        except Exception as e:
+            print(f"Error in predict_future_movement: {e}")
+            return {
+                'prediction': 'ERROR',
+                'confidence': 'LOW', 
+                'prediction_score': 0,
+                'key_factors': [],
+                'prediction_date': prediction_date,
+                'error': str(e)
+            }
 
 # Initialize KP Astrology Engine
 kp_engine = KPAstrologyEngine()
