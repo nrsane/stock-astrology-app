@@ -326,38 +326,169 @@ class KPAstrologyEngine:
 # Initialize KP Astrology Engine
 kp_engine = KPAstrologyEngine()
 
-# Simple Stock Data Manager (Demo data)
-class SimpleStockDataManager:
+# Realistic Stock Data Manager (Demo data with realistic prices)
+class RealisticStockDataManager:
     def __init__(self):
-        print("✅ Simple stock data manager initialized")
+        print("✅ Realistic stock data manager initialized")
+        # Base prices for popular Indian stocks (approximate recent prices)
+        self.base_prices = {
+            'RELIANCE': 2800,
+            'TCS': 3800,
+            'INFY': 1600,
+            'HDFCBANK': 1600,
+            'HDFC': 2800,
+            'ICICIBANK': 1000,
+            'SBIN': 600,
+            'BHARTIARTL': 900,
+            'ITC': 400,
+            'KOTAKBANK': 1800,
+            'AXISBANK': 1000,
+            'LT': 3400,
+            'HINDUNILVR': 2500,
+            'ASIANPAINT': 3200,
+            'DMART': 4000,
+            'BAJFINANCE': 7000,
+            'WIPRO': 400,
+            'ONGC': 200,
+            'IOC': 150,
+            'BPCL': 600
+        }
     
     def get_sample_price_data(self, symbol, days=30):
-        """Generate sample price data"""
+        """Generate realistic sample price data based on actual stock behavior"""
         import random
         from datetime import datetime, timedelta
         
-        base_price = random.uniform(100, 5000)
+        # Get base price for the symbol, or use a reasonable default
+        base_price = self.base_prices.get(symbol, 1000)
+        
+        # Add some randomness to base price for variety
+        base_price_variation = random.uniform(0.8, 1.2)
+        base_price = base_price * base_price_variation
+        
         prices = []
+        current_price = base_price
         
         for i in range(days):
             date = datetime.now().date() - timedelta(days=days - i - 1)
-            price_change = random.uniform(-0.05, 0.05)
-            close_price = base_price * (1 + price_change)
+            
+            # More realistic price movements (smaller daily changes)
+            price_change = random.uniform(-0.03, 0.03)  # ±3% daily change (more realistic)
+            
+            # Occasionally larger moves (market events)
+            if random.random() < 0.1:  # 10% chance of larger move
+                price_change = random.uniform(-0.08, 0.08)
+            
+            close_price = current_price * (1 + price_change)
+            
+            # Ensure prices don't go to unrealistic values
+            if close_price < base_price * 0.3:  # Prevent crashes below 30% of base
+                close_price = base_price * 0.3
+            elif close_price > base_price * 3:  # Prevent bubbles above 300% of base
+                close_price = base_price * 3
+            
+            # Calculate OHLC with realistic patterns
+            daily_volatility = abs(price_change) * 0.5  # Intraday volatility
+            
+            open_price = close_price * (1 + random.uniform(-0.01, 0.01))
+            high_price = max(open_price, close_price) * (1 + random.uniform(0, daily_volatility))
+            low_price = min(open_price, close_price) * (1 - random.uniform(0, daily_volatility))
+            
+            # Ensure high is highest and low is lowest
+            high_price = max(open_price, close_price, high_price)
+            low_price = min(open_price, close_price, low_price)
+            
+            # Ensure reasonable price relationships
+            if high_price <= low_price:
+                high_price = low_price * 1.01
+            if low_price <= 0:
+                low_price = close_price * 0.99
+            
+            # Realistic volume based on price
+            base_volume = random.randint(1000000, 5000000)
+            # Higher volume on larger price moves
+            volume_multiplier = 1 + abs(price_change) * 10
+            volume = int(base_volume * volume_multiplier)
             
             prices.append({
                 'date': date,
-                'open': close_price * (1 + random.uniform(-0.02, 0.01)),
-                'high': close_price * (1 + random.uniform(0, 0.03)),
-                'low': close_price * (1 + random.uniform(-0.03, 0)),
-                'close': close_price,
-                'volume': random.randint(100000, 5000000)
+                'open': round(open_price, 2),
+                'high': round(high_price, 2),
+                'low': round(low_price, 2),
+                'close': round(close_price, 2),
+                'volume': volume
             })
             
-            base_price = close_price
+            current_price = close_price
         
         return prices
 
-stock_data_manager = SimpleStockDataManager()
+    def get_realistic_price_data(self, symbol, days=30, start_price=None):
+        """Generate even more realistic price data with trend patterns"""
+        import random
+        from datetime import datetime, timedelta
+        
+        if start_price is None:
+            start_price = self.base_prices.get(symbol, 1000)
+        
+        prices = []
+        current_price = start_price
+        
+        # Add some trend component
+        trend = random.uniform(-0.001, 0.001)  # Small daily trend
+        
+        for i in range(days):
+            date = datetime.now().date() - timedelta(days=days - i - 1)
+            
+            # Base price change with trend
+            base_change = trend + random.uniform(-0.02, 0.02)
+            
+            # Day of week effects (Fridays and Mondays often different)
+            day_of_week = date.weekday()
+            if day_of_week == 4:  # Friday
+                base_change += random.uniform(-0.01, 0.01)
+            elif day_of_week == 0:  # Monday
+                base_change += random.uniform(-0.015, 0.015)
+            
+            close_price = current_price * (1 + base_change)
+            
+            # Ensure reasonable price bounds
+            if close_price < start_price * 0.5:
+                close_price = start_price * 0.5
+            elif close_price > start_price * 2:
+                close_price = start_price * 2
+            
+            # Calculate realistic OHLC
+            volatility = abs(base_change) * 2 + 0.005  # Minimum 0.5% intraday volatility
+            
+            open_price = current_price * (1 + random.uniform(-0.005, 0.005))
+            high_price = max(open_price, close_price) * (1 + random.uniform(0, volatility))
+            low_price = min(open_price, close_price) * (1 - random.uniform(0, volatility))
+            
+            # Final validation
+            high_price = max(open_price, close_price, high_price, low_price * 1.001)
+            low_price = min(open_price, close_price, low_price, high_price * 0.999)
+            
+            # Volume with some patterns
+            base_vol = random.randint(500000, 3000000)
+            vol_multiplier = 1 + abs(base_change) * 15
+            volume = int(base_vol * vol_multiplier)
+            
+            prices.append({
+                'date': date,
+                'open': round(open_price, 2),
+                'high': round(high_price, 2),
+                'low': round(low_price, 2),
+                'close': round(close_price, 2),
+                'volume': volume
+            })
+            
+            current_price = close_price
+        
+        return prices
+
+# Initialize Realistic Stock Data Manager
+stock_data_manager = RealisticStockDataManager()
 
 # HTML Template (make sure this is properly closed)
 HTML_TEMPLATE = '''
@@ -1217,8 +1348,8 @@ def generate_prices(stock_id):
         # Clear existing prices
         StockPrice.query.filter_by(stock_id=stock_id).delete()
         
-        # Generate demo prices
-        demo_prices = stock_data_manager.get_sample_price_data(stock.symbol, days)
+        # Generate realistic prices
+        demo_prices = stock_data_manager.get_realistic_price_data(stock.symbol, days)
         
         for price_data in demo_prices:
             price = StockPrice(
@@ -1234,7 +1365,12 @@ def generate_prices(stock_id):
         
         db.session.commit()
         
-        return jsonify({'generated': len(demo_prices), 'message': 'Demo prices generated successfully'})
+        return jsonify({
+            'generated': len(demo_prices), 
+            'message': 'Realistic demo prices generated successfully',
+            'symbol': stock.symbol,
+            'price_range': f"{demo_prices[0]['close']} - {demo_prices[-1]['close']}"
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
