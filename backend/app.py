@@ -328,6 +328,84 @@ class SimpleStockDataManager:
 stock_data_manager = SimpleStockDataManager()
 
 HTML_TEMPLATE = '''
+# =============================================================================
+# API Routes - ADD THIS SECTION RIGHT HERE
+# =============================================================================
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/api/stocks', methods=['GET'])
+def get_stocks():
+    try:
+        stocks = Stock.query.all()
+        return jsonify([stock.to_dict() for stock in stocks])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stocks', methods=['POST'])
+def add_stock():
+    try:
+        data = request.get_json()
+        
+        # Check if stock already exists
+        existing_stock = Stock.query.filter_by(symbol=data['symbol']).first()
+        if existing_stock:
+            return jsonify({'error': f"Stock {data['symbol']} already exists"}), 400
+        
+        # Create new stock
+        stock = Stock(
+            symbol=data['symbol'],
+            name=data.get('name', data['symbol']),
+            listing_date=data['listing_date'],
+            listing_time=data.get('listing_time', '10:00')
+        )
+        db.session.add(stock)
+        db.session.commit()
+        
+        # Generate KP birth chart
+        listing_datetime_str = f"{data['listing_date']} {data.get('listing_time', '10:00')}"
+        listing_datetime = datetime.strptime(listing_datetime_str, '%Y-%m-%d %H:%M')
+        
+        birth_chart_data = kp_engine.calculate_birth_chart(listing_datetime)
+        
+        if birth_chart_data:
+            kp_chart = KPBirthChart(
+                stock_id=stock.id,
+                ascendant_degree=birth_chart_data['ascendant_degree'],
+                planet_positions=birth_chart_data['planet_positions'],
+                house_significators=birth_chart_data['house_significators']
+            )
+            db.session.add(kp_chart)
+            db.session.commit()
+        
+        return jsonify(stock.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ... add ALL the other API routes from my previous message ...
+
+@app.route('/api/stats')
+def get_stats():
+    try:
+        total_stocks = Stock.query.count()
+        total_charts = KPBirthChart.query.count()
+        
+        return jsonify({
+            'total_stocks': total_stocks,
+            'total_charts': total_charts
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+# =============================================================================
+# END OF API ROUTES - then continue with:
+# =============================================================================
+
 <!DOCTYPE html>
 <html>
 <head>
