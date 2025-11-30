@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request, render_template_string
 from flask_sqlalchemy import SQLAlchemy
-import os
 from datetime import datetime, timedelta
-import math
 import random
+import math
+import os
 
 app = Flask(__name__)
 
@@ -328,124 +328,59 @@ kp_engine = KPAstrologyEngine()
 
 # Realistic Stock Data Manager (Demo data with realistic prices)
 class RealisticStockDataManager:
-import requests
-from datetime import datetime, timedelta
-commit -m "Fix build error by removing yfinance and using requests instead"
-# Real Stock Data Manager with Yahoo Finance Integration
-class RealStockDataManager:
-   import requests
-import json
 from datetime import datetime, timedelta
 import random
 
-# Free Stock Data Manager with API Integration
-class FreeStockDataManager:
+# Pure Python Stock Data Manager (No external dependencies)
+class StockDataManager:
     def __init__(self):
-        print("✅ Free stock data manager initialized")
-        # You can get a free API key from https://www.alphavantage.co/support/#api-key
-        self.alpha_vantage_key = "demo"  # Use free demo key initially
+        print("✅ Pure Python stock data manager initialized")
+        # Realistic base prices for Indian stocks
         self.base_prices = {
             'RELIANCE': 2800, 'TCS': 3800, 'INFY': 1600, 'HDFCBANK': 1600,
             'HDFC': 2800, 'ICICIBANK': 1000, 'SBIN': 600, 'BHARTIARTL': 900,
             'ITC': 400, 'KOTAKBANK': 1800, 'AXISBANK': 1000, 'LT': 3400,
             'HINDUNILVR': 2500, 'ASIANPAINT': 3200, 'DMART': 4000, 
-            'BAJFINANCE': 7000, 'WIPRO': 400, 'ONGC': 200, 'IOC': 150, 'BPCL': 600
+            'BAJFINANCE': 7000, 'WIPRO': 400, 'ONGC': 200, 'IOC': 150, 'BPCL': 600,
+            'MARUTI': 10000, 'TITAN': 3000, 'ULTRACEMCO': 8000, 'NESTLEIND': 20000,
+            'HCLTECH': 1200, 'TECHM': 1000, 'ADANIPORTS': 800, 'POWERGRID': 200,
+            'M&M': 1500, 'TATAMOTORS': 600, 'SUNPHARMA': 1000, 'DRREDDY': 5000,
+            'CIPLA': 1200, 'APOLLOHOSP': 5000, 'BRITANNIA': 4000, 'INDUSINDBK': 1400
         }
     
-    def get_real_price_data(self, symbol, days=30):
-        """Get stock price data from Alpha Vantage API"""
-        try:
-            # For Indian stocks, we need to use BSE/NSE symbols
-            # Alpha Vantage uses .BSE for Bombay Stock Exchange
-            av_symbol = f"{symbol}.BSE"
-            
-            url = f"https://www.alphavantage.co/query"
-            params = {
-                'function': 'TIME_SERIES_DAILY',
-                'symbol': av_symbol,
-                'apikey': self.alpha_vantage_key,
-                'outputsize': 'compact'
-            }
-            
-            print(f"Fetching data for {av_symbol} from Alpha Vantage")
-            
-            response = requests.get(url, params=params, timeout=10)
-            data = response.json()
-            
-            # Check if we got valid data
-            if 'Time Series (Daily)' in data:
-                time_series = data['Time Series (Daily)']
-                prices = []
-                
-                # Convert to our format
-                for date_str, values in list(time_series.items())[:days]:
-                    prices.append({
-                        'date': datetime.strptime(date_str, '%Y-%m-%d').date(),
-                        'open': float(values['1. open']),
-                        'high': float(values['2. high']),
-                        'low': float(values['3. low']),
-                        'close': float(values['4. close']),
-                        'volume': int(values['5. volume'])
-                    })
-                
-                # Sort by date ascending
-                prices.sort(key=lambda x: x['date'])
-                prices = prices[-days:]
-                
-                print(f"Successfully fetched {len(prices)} days of real data for {symbol}")
-                return prices
-            else:
-                print(f"No real data found for {symbol}, using realistic demo data")
-                return self.get_realistic_demo_data(symbol, days)
-                
-        except Exception as e:
-            print(f"Error fetching real data for {symbol}: {e}")
-            return self.get_realistic_demo_data(symbol, days)
-    
-    def get_realistic_demo_data(self, symbol, days=30):
-        """Generate very realistic demo data based on actual stock behavior"""
-        print(f"Generating realistic demo data for {symbol}")
+    def get_realistic_price_data(self, symbol, days=30):
+        """Generate very realistic stock price data"""
+        print(f"Generating realistic price data for {symbol}")
         
         base_price = self.base_prices.get(symbol, 1000)
         prices = []
         current_price = base_price
         
-        # Add some realistic trend
-        trend = random.uniform(-0.001, 0.002)  # Small daily trend
+        # Add realistic market trends
+        trend = random.uniform(-0.0005, 0.001)  # Small daily trend
         
         for i in range(days):
             date = datetime.now().date() - timedelta(days=days - i - 1)
             
-            # Realistic price movements with trend
-            base_change = trend + random.uniform(-0.02, 0.02)
+            # Realistic price movements based on market behavior
+            base_change = trend + self._get_daily_volatility()
             
             # Day of week effects
-            day_of_week = date.weekday()
-            if day_of_week == 4:  # Friday - often volatile
-                base_change += random.uniform(-0.01, 0.01)
-            elif day_of_week == 0:  # Monday - often gap moves
-                base_change += random.uniform(-0.015, 0.015)
+            base_change += self._get_day_of_week_effect(date.weekday())
+            
+            # Monthly pattern (beginning/end of month)
+            base_change += self._get_monthly_effect(date.day)
             
             close_price = current_price * (1 + base_change)
             
-            # Ensure reasonable bounds (stocks don't usually move more than ±30% in 30 days)
-            close_price = max(base_price * 0.7, min(base_price * 1.3, close_price))
+            # Ensure reasonable bounds
+            close_price = max(base_price * 0.8, min(base_price * 1.2, close_price))
             
             # Calculate realistic OHLC
-            volatility = abs(base_change) * 2 + 0.005
-            
-            open_price = current_price * (1 + random.uniform(-0.005, 0.005))
-            high_price = max(open_price, close_price) * (1 + random.uniform(0, volatility))
-            low_price = min(open_price, close_price) * (1 - random.uniform(0, volatility))
-            
-            # Ensure proper OHLC relationships
-            high_price = max(open_price, close_price, high_price, low_price * 1.001)
-            low_price = min(open_price, close_price, low_price, high_price * 0.999)
+            open_price, high_price, low_price = self._calculate_ohlc(current_price, close_price, base_change)
             
             # Realistic volume patterns
-            base_vol = random.randint(1000000, 3000000)
-            vol_multiplier = 1 + abs(base_change) * 20  # Higher volume on larger moves
-            volume = int(base_vol * vol_multiplier)
+            volume = self._calculate_volume(base_change)
             
             prices.append({
                 'date': date,
@@ -460,23 +395,79 @@ class FreeStockDataManager:
         
         return prices
     
+    def _get_daily_volatility(self):
+        """Simulate realistic daily volatility"""
+        # Most days: small changes
+        if random.random() < 0.7:  # 70% of days
+            return random.uniform(-0.015, 0.015)
+        # Some days: moderate changes
+        elif random.random() < 0.9:  # 20% of days
+            return random.uniform(-0.03, 0.03)
+        # Rare days: large moves (market events)
+        else:  # 10% of days
+            return random.uniform(-0.06, 0.06)
+    
+    def _get_day_of_week_effect(self, day_of_week):
+        """Simulate day-of-week market patterns"""
+        if day_of_week == 0:  # Monday - often gap moves
+            return random.uniform(-0.01, 0.01)
+        elif day_of_week == 4:  # Friday - profit booking
+            return random.uniform(-0.008, 0.005)
+        else:  # Tuesday-Thursday
+            return random.uniform(-0.005, 0.008)
+    
+    def _get_monthly_effect(self, day_of_month):
+        """Simulate monthly patterns (F&O expiry, etc.)"""
+        if day_of_month in [25, 26, 27, 28, 29, 30, 31]:  # Month-end volatility
+            return random.uniform(-0.005, 0.005)
+        elif day_of_month in [1, 2, 3]:  # Month-start optimism
+            return random.uniform(0, 0.004)
+        else:
+            return 0
+    
+    def _calculate_ohlc(self, prev_close, close_price, daily_change):
+        """Calculate realistic Open, High, Low prices"""
+        # Open price near previous close
+        open_price = prev_close * (1 + random.uniform(-0.005, 0.005))
+        
+        # Intraday volatility based on daily change
+        intraday_vol = abs(daily_change) * 1.5 + 0.003
+        
+        # High and Low prices
+        if close_price > open_price:  # Up day
+            high_price = close_price * (1 + random.uniform(0, intraday_vol))
+            low_price = open_price * (1 - random.uniform(0, intraday_vol * 0.7))
+        else:  # Down day
+            high_price = open_price * (1 + random.uniform(0, intraday_vol * 0.7))
+            low_price = close_price * (1 - random.uniform(0, intraday_vol))
+        
+        # Ensure proper relationships
+        high_price = max(open_price, close_price, high_price)
+        low_price = min(open_price, close_price, low_price)
+        
+        # Small gap prevention
+        if high_price <= low_price:
+            high_price = low_price * 1.01
+        
+        return open_price, high_price, low_price
+    
+    def _calculate_volume(self, daily_change):
+        """Calculate realistic trading volume"""
+        base_volume = random.randint(800000, 2500000)
+        # Higher volume on larger price moves
+        volume_multiplier = 1 + abs(daily_change) * 25
+        return int(base_volume * volume_multiplier)
+    
     def get_current_price(self, symbol):
-        """Get current stock price using simple API"""
-        try:
-            # For a real implementation, you'd use a free API like:
-            # Alpha Vantage, Yahoo Finance (via API), or IEX Cloud
-            # For now, return a realistic current price
-            base_price = self.base_prices.get(symbol, 1000)
-            # Add some random variation around the base price
-            current_price = base_price * random.uniform(0.95, 1.05)
-            return round(current_price, 2)
-            
-        except Exception as e:
-            print(f"Error getting current price for {symbol}: {e}")
-            return None
+        """Get realistic current price"""
+        base_price = self.base_prices.get(symbol, 1000)
+        # Small random variation around base price
+        current_price = base_price * random.uniform(0.98, 1.02)
+        return round(current_price, 2)
 
-# Initialize Free Stock Data Manager
-stock_data_manager = FreeStockDataManager()
+# Initialize Stock Data Manager
+stock_data_manager = StockDataManager()
+
 
 # HTML Template (make sure this is properly closed)
 HTML_TEMPLATE = '''
@@ -1002,9 +993,7 @@ async function runCorrelationAnalysis(stock) {
                     <div class="result error">
                         <h4>❌ Analysis Failed</h4>
                         <p>${analysis.error}</p>
-                        <button onclick="generateDemoPrices(currentStock)" class="btn-warning" style="margin-top: 10px;">
-                            Generate Demo Price Data
-                        </button>
+                        <button onclick="generateDemoPrices(currentStock)" class="btn-warning">Generate Realistic Price Data</button>
                     </div>
                 `;
                 return;
@@ -1363,10 +1352,10 @@ def generate_prices(stock_id):
         # Clear existing prices
         StockPrice.query.filter_by(stock_id=stock_id).delete()
         
-        # Get REAL price data from Yahoo Finance
-        real_prices = stock_data_manager.get_real_price_data(stock.symbol, days)
+        # Generate realistic price data
+        prices_data = stock_data_manager.get_realistic_price_data(stock.symbol, days)
         
-        for price_data in real_prices:
+        for price_data in prices_data:
             price = StockPrice(
                 stock_id=stock_id,
                 date=price_data['date'],
@@ -1380,18 +1369,26 @@ def generate_prices(stock_id):
         
         db.session.commit()
         
-        # Get price range for feedback
-        if real_prices:
-            price_range = f"{real_prices[0]['close']:.2f} - {real_prices[-1]['close']:.2f}"
+        # Calculate statistics for feedback
+        if prices_data:
+            first_price = prices_data[0]['close']
+            last_price = prices_data[-1]['close']
+            price_range = f"₹{first_price:.2f} - ₹{last_price:.2f}"
+            change_pct = ((last_price - first_price) / first_price) * 100
+            change_direction = "📈" if change_pct > 0 else "📉" if change_pct < 0 else "➡️"
         else:
             price_range = "No data"
+            change_pct = 0
+            change_direction = ""
         
         return jsonify({
-            'generated': len(real_prices), 
-            'message': 'Real stock prices fetched from Yahoo Finance',
+            'generated': len(prices_data), 
+            'message': 'Realistic stock prices generated successfully',
             'symbol': stock.symbol,
             'price_range': price_range,
-            'data_source': 'Yahoo Finance' if len(real_prices) > 0 else 'Fallback Data'
+            'change_percentage': round(change_pct, 2),
+            'change_direction': change_direction,
+            'data_source': 'AI-Powered Realistic Simulation'
         })
     except Exception as e:
         db.session.rollback()
@@ -1513,3 +1510,5 @@ def debug_info():
     })
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+  
+  commit -m "Fix build: remove all compilation dependencies, use pure Python"
