@@ -4,6 +4,8 @@ import os
 from datetime import datetime, timedelta
 import math
 import random
+import yfinance as yf
+import pandas as pd
 
 app = Flask(__name__)
 
