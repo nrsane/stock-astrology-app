@@ -172,10 +172,13 @@ class KPAstrologyEngine:
                     'Jupiter', 'Saturn', 'Mercury']
         return sub_lords[nakshatra_index % 9]
 
-    def analyze_correlation(self, stock_prices, birth_chart):
-        """Analyze correlation between planetary positions and price movements"""
+def analyze_correlation(self, stock_prices, birth_chart):
+    """Analyze correlation between planetary positions and price movements"""
+    try:
         if not stock_prices or len(stock_prices) < 10:
-            return {"error": "Insufficient price data"}
+            return {"error": "Insufficient price data. Need at least 10 days of data."}
+        
+        print(f"Analyzing correlation with {len(stock_prices)} price records")  # Debug
         
         analysis = []
         planet_influences = {
@@ -184,9 +187,11 @@ class KPAstrologyEngine:
         }
         
         # Get 2nd and 11th house significators (wealth and gains)
-        house_2_significators = birth_chart['house_significators'][2]['all_significators']
-        house_11_significators = birth_chart['house_significators'][11]['all_significators']
+        house_2_significators = birth_chart['house_significators'].get('2', {}).get('all_significators', [])
+        house_11_significators = birth_chart['house_significators'].get('11', {}).get('all_significators', [])
         all_significators = list(set(house_2_significators + house_11_significators))
+        
+        print(f"Significators found: {all_significators}")  # Debug
         
         # Simple correlation analysis
         total_days = len(stock_prices)
@@ -196,8 +201,12 @@ class KPAstrologyEngine:
             price_today = stock_prices[i]
             price_yesterday = stock_prices[i-1]
             
-            price_change = ((price_today.close_price - price_yesterday.close_price) / 
-                          price_yesterday.close_price) * 100
+            # Calculate price change percentage
+            if price_yesterday.close_price and price_yesterday.close_price > 0:
+                price_change = ((price_today.close_price - price_yesterday.close_price) / 
+                              price_yesterday.close_price) * 100
+            else:
+                price_change = 0
             
             # Calculate astrological score
             astro_score = 0
@@ -216,10 +225,14 @@ class KPAstrologyEngine:
                 'date': price_today.date.isoformat(),
                 'price_change': round(price_change, 2),
                 'astro_score': round(astro_score, 2),
+                'predicted_direction': 'UP' if predicted_direction == 1 else 'DOWN',
+                'actual_direction': 'UP' if actual_direction == 1 else 'DOWN',
                 'prediction_correct': predicted_direction == actual_direction
             })
         
         accuracy = round((correct_predictions / (total_days - 1)) * 100, 2) if total_days > 1 else 0
+        
+        print(f"Analysis complete: {correct_predictions}/{total_days-1} correct, {accuracy}% accuracy")  # Debug
         
         return {
             'accuracy': accuracy,
@@ -229,6 +242,10 @@ class KPAstrologyEngine:
             'daily_analysis': analysis[-10:],  # Last 10 days
             'insights': self.generate_insights(accuracy, all_significators)
         }
+        
+    except Exception as e:
+        print(f"Error in analyze_correlation: {e}")  # Debug
+        return {"error": f"Analysis failed: {str(e)}"}
 
     def generate_insights(self, accuracy, significators):
         """Generate insights based on correlation analysis"""
@@ -830,75 +847,108 @@ async function selectStock(stockId) {
             }
         }
 
-        // Run correlation analysis
-        async function runCorrelationAnalysis(stock) {
-            const correlationContent = document.getElementById('correlationContent');
-            
-            try {
-                correlationContent.innerHTML = '<div class="result info">Analyzing correlation... This may take a moment.</div>';
-                
-                const response = await fetch(`/api/stocks/${stock.id}/correlation`, {
-                    method: 'POST'
-                });
-                
-                const analysis = await response.json();
-                
-                if (response.ok) {
-                    let accuracyClass = 'accuracy-low';
-                    if (analysis.accuracy > 70) accuracyClass = 'accuracy-high';
-                    else if (analysis.accuracy > 55) accuracyClass = 'accuracy-medium';
-                    
-                    correlationContent.innerHTML = `
-                        <div class="result success">
-                            <h4>📊 Correlation Analysis Results</h4>
-                            <p><strong>Accuracy:</strong> <span class="${accuracyClass}">${analysis.accuracy}%</span></p>
-                            <p><strong>Days Analyzed:</strong> ${analysis.total_days_analyzed}</p>
-                            <p><strong>Correct Predictions:</strong> ${analysis.correct_predictions}</p>
-                            <p><strong>Key Significators:</strong> ${analysis.key_significators.join(', ')}</p>
-                        </div>
-                        
-                        <div style="margin-top: 15px;">
-                            <h4>💡 Insights</h4>
-                            <ul>
-                                ${analysis.insights.map(insight => `<li>${insight}</li>`).join('')}
-                            </ul>
-                        </div>
-                        
-                        ${analysis.daily_analysis && analysis.daily_analysis.length > 0 ? `
-                        <div style="margin-top: 15px;">
-                            <h4>📈 Recent Analysis (Last 10 Days)</h4>
-                            <div style="max-height: 300px; overflow-y: auto;">
-                                <table style="width: 100%; border-collapse: collapse;">
-                                    <thead>
-                                        <tr style="background: #f8f9fa;">
-                                            <th style="padding: 8px; border: 1px solid #ddd;">Date</th>
-                                            <th style="padding: 8px; border: 1px solid #ddd;">Price Change</th>
-                                            <th style="padding: 8px; border: 1px solid #ddd;">Astro Score</th>
-                                            <th style="padding: 8px; border: 1px solid #ddd;">Prediction</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${analysis.daily_analysis.map(day => `
-                                            <tr>
-                                                <td style="padding: 8px; border: 1px solid #ddd;">${day.date}</td>
-                                                <td style="padding: 8px; border: 1px solid #ddd; color: ${day.price_change >= 0 ? 'green' : 'red'}">${day.price_change}%</td>
-                                                <td style="padding: 8px; border: 1px solid #ddd;">${day.astro_score}</td>
-                                                <td style="padding: 8px; border: 1px solid #ddd; color: ${day.prediction_correct ? 'green' : 'red'}">${day.prediction_correct ? '✅ Correct' : '❌ Wrong'}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        ` : ''}
-                    `;
-                } else {
-                    correlationContent.innerHTML = `<div class="error">Error in analysis: ${analysis.error}</div>`;
-                }
-            } catch (error) {
-                correlationContent.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+     // Run correlation analysis
+async function runCorrelationAnalysis(stock) {
+    const correlationContent = document.getElementById('correlationContent');
+    
+    try {
+        correlationContent.innerHTML = '<div class="result info">Analyzing correlation... This may take a moment.</div>';
+        
+        const response = await fetch(`/api/stocks/${stock.id}/correlation`, {
+            method: 'POST'
+        });
+        
+        const analysis = await response.json();
+        
+        if (response.ok) {
+            if (analysis.error) {
+                correlationContent.innerHTML = `
+                    <div class="result error">
+                        <h4>❌ Analysis Failed</h4>
+                        <p>${analysis.error}</p>
+                        <button onclick="generateDemoPrices(currentStock)" class="btn-warning" style="margin-top: 10px;">
+                            Generate Demo Price Data
+                        </button>
+                    </div>
+                `;
+                return;
             }
+            
+            let accuracyClass = 'accuracy-low';
+            if (analysis.accuracy > 70) accuracyClass = 'accuracy-high';
+            else if (analysis.accuracy > 55) accuracyClass = 'accuracy-medium';
+            
+            correlationContent.innerHTML = `
+                <div class="result success">
+                    <h4>📊 Correlation Analysis Results</h4>
+                    <p><strong>Accuracy:</strong> <span class="${accuracyClass}">${analysis.accuracy}%</span></p>
+                    <p><strong>Days Analyzed:</strong> ${analysis.total_days_analyzed}</p>
+                    <p><strong>Correct Predictions:</strong> ${analysis.correct_predictions}</p>
+                    <p><strong>Key Significators:</strong> ${analysis.key_significators.join(', ')}</p>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4>💡 Insights</h4>
+                    <ul>
+                        ${analysis.insights.map(insight => `<li>${insight}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                ${analysis.daily_analysis && analysis.daily_analysis.length > 0 ? `
+                <div style="margin-top: 15px;">
+                    <h4>📈 Recent Analysis (Last 10 Days)</h4>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Date</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Price Change</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Astro Score</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Prediction</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${analysis.daily_analysis.map(day => `
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${day.date.split('T')[0]}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; color: ${day.price_change >= 0 ? 'green' : 'red'}">
+                                            ${day.price_change}%
+                                        </td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${day.astro_score}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${day.predicted_direction}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; color: ${day.prediction_correct ? 'green' : 'red'}">
+                                            ${day.prediction_correct ? '✅ Correct' : '❌ Wrong'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        } else {
+            correlationContent.innerHTML = `
+                <div class="result error">
+                    <h4>❌ Analysis Error</h4>
+                    <p>${analysis.error || 'Unknown error occurred'}</p>
+                    <button onclick="generateDemoPrices(currentStock)" class="btn-warning" style="margin-top: 10px;">
+                        Generate Demo Price Data First
+                    </button>
+                </div>
+            `;
         }
+    } catch (error) {
+        correlationContent.innerHTML = `
+            <div class="result error">
+                <h4>❌ Network Error</h4>
+                <p>${error.message}</p>
+                <p>Make sure you have generated price data first.</p>
+            </div>
+        `;
+    }
+}
 
         // Get prediction
         async function getPrediction(stock) {
@@ -1177,17 +1227,23 @@ def generate_prices(stock_id):
 @app.route('/api/stocks/<int:stock_id>/correlation', methods=['POST'])
 def analyze_correlation(stock_id):
     try:
+        print(f"Starting correlation analysis for stock {stock_id}")  # Debug
+        
         stock = Stock.query.get_or_404(stock_id)
         kp_chart = KPBirthChart.query.filter_by(stock_id=stock_id).first()
         
         if not kp_chart:
-            return jsonify({'error': 'KP chart not found'}), 404
+            return jsonify({'error': 'KP chart not found. Please add the stock first.'}), 404
         
         # Get price data
         prices = StockPrice.query.filter_by(stock_id=stock_id).order_by(StockPrice.date.asc()).all()
         
-        if not prices:
-            return jsonify({'error': 'No price data available'}), 400
+        print(f"Found {len(prices)} price records")  # Debug
+        
+        if not prices or len(prices) < 10:
+            return jsonify({
+                'error': f'Insufficient price data. Found {len(prices)} records, but need at least 10 days of data. Generate demo prices first.'
+            }), 400
         
         # Prepare birth chart data
         birth_chart_data = {
@@ -1198,15 +1254,21 @@ def analyze_correlation(stock_id):
         # Analyze correlation
         correlation_result = kp_engine.analyze_correlation(prices, birth_chart_data)
         
+        print(f"Correlation result: {correlation_result}")  # Debug
+        
         return jsonify(correlation_result)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in correlation route: {e}")  # Debug
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/stocks/<int:stock_id>/predict', methods=['POST'])
 def predict_movement(stock_id):
     try:
         data = request.get_json()
         prediction_date = data.get('prediction_date')
+        
+        print(f"Prediction request for stock {stock_id} on {prediction_date}")  # Debug
         
         stock = Stock.query.get_or_404(stock_id)
         kp_chart = KPBirthChart.query.filter_by(stock_id=stock_id).first()
@@ -1222,9 +1284,13 @@ def predict_movement(stock_id):
         # Get prediction
         prediction = kp_engine.predict_future_movement(birth_chart_data, prediction_date)
         
+        print(f"Prediction result: {prediction}")  # Debug
+        
         return jsonify(prediction)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in prediction route: {e}")  # Debug
+        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
 @app.route('/api/stats')
 def get_stats():
